@@ -1,20 +1,21 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions,
+  View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, ActivityIndicator
 } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
 import { Download, ChevronRight, Zap, Award, Calendar } from "lucide-react-native";
 import { C } from "../constants/colors";
 import { Card, SH } from "../components/Card";
-import { partiBuyume, radarVerisi, performansTablo, isiHatlar, isiSutunlar, isiDegerler } from "../services/api";
+import { partiBuyume, radarVerisiniCek, performansTablosunuCek, isiHaritasiniCek } from "../services/api";
 
 const W = Dimensions.get("window").width;
 
 // Basit SVG Radar – react-native-svg
 import Svg, { Polygon, Line, Text as SvgText, Circle } from "react-native-svg";
-function RadarGraf() {
+function RadarGraf({ data }: { data: any[] }) {
   const cx = 110, cy = 100, r = 70;
-  const n = radarVerisi.length;
+  if (!data || data.length === 0) return null;
+  const n = data.length;
   const toXY = (i: number, val: number) => {
     const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
     const dist = (val / 100) * r;
@@ -25,26 +26,26 @@ function RadarGraf() {
     return { x: cx + (r + 18) * Math.cos(angle), y: cy + (r + 18) * Math.sin(angle) };
   };
   const gridLevels = [25, 50, 75, 100];
-  const points = radarVerisi.map((d, i) => toXY(i, d.value));
+  const points = data.map((d, i) => toXY(i, d.value));
   const pointStr = points.map(p => `${p.x},${p.y}`).join(" ");
 
   return (
     <Svg width={W - 80} height={200} viewBox="0 0 220 200">
       {/* Izgara */}
       {gridLevels.map(lv => {
-        const gPts = radarVerisi.map((_, i) => toXY(i, lv));
+        const gPts = data.map((_, i) => toXY(i, lv));
         const gStr = gPts.map(p => `${p.x},${p.y}`).join(" ");
         return <Polygon key={lv} points={gStr} fill="none" stroke={C.border} strokeWidth="1" />;
       })}
       {/* Eksenler */}
-      {radarVerisi.map((_, i) => {
+      {data.map((_, i) => {
         const ep = toXY(i, 100);
         return <Line key={i} x1={cx} y1={cy} x2={ep.x} y2={ep.y} stroke={C.border} strokeWidth="1" />;
       })}
       {/* Veri */}
       <Polygon points={pointStr} fill={`${C.peach}30`} stroke={C.peach} strokeWidth="2" />
       {/* Etiketler */}
-      {radarVerisi.map((d, i) => {
+      {data.map((d, i) => {
         const lp = labelXY(i);
         return <SvgText key={i} x={lp.x} y={lp.y} textAnchor="middle" alignmentBaseline="middle" fontSize="9" fill={C.muted}>{d.label}</SvgText>;
       })}
@@ -60,6 +61,31 @@ function isiRengi(v: number): string {
 }
 
 export default function AnalizEkrani() {
+  const [loading, setLoading] = useState(true);
+  const [radarData, setRadarData] = useState<any[]>([]);
+  const [performansData, setPerformansData] = useState<any[]>([]);
+  const [isiData, setIsiData] = useState<{ hatlar: string[], sutunlar: string[], degerler: number[][] }>({ hatlar: [], sutunlar: [], degerler: [] });
+
+  useEffect(() => {
+    const veriCek = async () => {
+      try {
+        const [rData, pData, iData] = await Promise.all([
+          radarVerisiniCek(),
+          performansTablosunuCek(),
+          isiHaritasiniCek()
+        ]);
+        setRadarData(rData || []);
+        setPerformansData(pData || []);
+        setIsiData(iData || { hatlar: [], sutunlar: [], degerler: [] });
+      } catch (err) {
+        console.error("Analiz verileri alınamadı:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    veriCek();
+  }, []);
+
   const buyumeData = partiBuyume.map(d => ({ value: d.r }));
 
   const kaliteSeviyeler = [
@@ -67,6 +93,10 @@ export default function AnalizEkrani() {
     { label: "Kabul Edilebilir",   pct: 13, color: C.blue,  text: "%13" },
     { label: "Hatalı",             pct: 2,  color: C.peach, text: "%2"  },
   ];
+
+  if (loading) {
+    return <View style={[s.scroll, { justifyContent: "center", alignItems: "center" }]}><ActivityIndicator color={C.peach} /></View>;
+  }
 
   return (
     <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
@@ -191,7 +221,7 @@ export default function AnalizEkrani() {
       <Card>
         <SH title="Kategoriye Göre Makine Performansı" action="Detaylar" />
         <View style={{ alignItems: "center" }}>
-          <RadarGraf />
+          <RadarGraf data={radarData} />
         </View>
       </Card>
 
@@ -204,18 +234,18 @@ export default function AnalizEkrani() {
         {/* Başlık satırı */}
         <View style={{ flexDirection: "row", marginBottom: 6 }}>
           <View style={{ width: 48 }} />
-          {isiSutunlar.map(c => (
+          {isiData.sutunlar?.map((c: string) => (
             <View key={c} style={{ flex: 1, alignItems: "center" }}>
               <Text style={{ fontSize: 7.5, fontWeight: "600", color: C.muted }}>{c}</Text>
             </View>
           ))}
         </View>
-        {isiHatlar.map((hat, ri) => (
+        {isiData.hatlar?.map((hat: string, ri: number) => (
           <View key={hat} style={{ flexDirection: "row", marginBottom: 4 }}>
             <View style={{ width: 48, justifyContent: "center" }}>
               <Text style={{ fontSize: 8, color: C.muted }}>{hat}</Text>
             </View>
-            {isiDegerler[ri].map((val, ci) => (
+            {isiData.degerler[ri]?.map((val: number, ci: number) => (
               <View key={ci} style={{ flex: 1, height: 16, marginHorizontal: 1, borderRadius: 3, backgroundColor: isiRengi(val) }} />
             ))}
           </View>
@@ -262,8 +292,6 @@ export default function AnalizEkrani() {
         />
       </Card>
 
-
-
       {/* Hızlı Performans Tablosu */}
       <Card>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -275,14 +303,14 @@ export default function AnalizEkrani() {
             <Text key={h} style={s.tableHeaderText}>{h}</Text>
           ))}
         </View>
-        {performansTablo.map((row, i) => {
+        {performansData.map((row: any, i: number) => {
           const tagStyle =
             row.oncelik === "Acil"   ? { bg: C.peachLt, color: C.peach } :
             row.oncelik === "Yüksek" ? { bg: "#EBF0FA", color: "#2E5DA8" } :
             row.oncelik === "Orta"   ? { bg: C.mintLt,  color: C.mint  } :
                                        { bg: C.blueLt,  color: C.blue  };
           return (
-            <View key={i} style={[s.tableRow, { borderBottomWidth: i < performansTablo.length - 1 ? 1 : 0, borderBottomColor: C.border }]}>
+            <View key={i} style={[s.tableRow, { borderBottomWidth: i < performansData.length - 1 ? 1 : 0, borderBottomColor: C.border }]}>
               <View style={[s.priorityTag, { backgroundColor: tagStyle.bg }]}>
                 <Text style={[s.priorityText, { color: tagStyle.color }]}>{row.oncelik}</Text>
               </View>

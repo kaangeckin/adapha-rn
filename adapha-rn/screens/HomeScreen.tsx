@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions,
+  View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, ActivityIndicator
 } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
 import {
@@ -9,7 +9,7 @@ import {
 import { C } from "../constants/colors";
 import { Card, SH } from "../components/Card";
 import { BantDurumuPaneli } from "../components/BantDurumuPaneli";
-import { hizProfili, aylikUretim, programVerisi } from "../services/api";
+import { hizProfili, aylikUretim, programVerisi, dashboardOzetiniCek, bantVerisiniCek, socket, Bant } from "../services/api";
 
 const W = Dimensions.get("window").width;
 
@@ -17,7 +17,7 @@ const W = Dimensions.get("window").width;
 import Svg, { Path, Line, Text as SvgText, Polygon, Circle } from "react-native-svg";
 function SvgGauge({ value = 0 }: { value?: number }) {
   const max = 300, cx = 120, cy = 118, r = 92;
-  const ang = (v: number) => Math.PI * (1 - v / max);
+  const ang = (v: number) => Math.PI * (1 - Math.min(v, max) / max);
   const pt = (a: number, rad: number) => ({
     x: cx + rad * Math.cos(a),
     y: cy - rad * Math.sin(a),
@@ -41,17 +41,64 @@ function SvgGauge({ value = 0 }: { value?: number }) {
       <Polygon points={`${tip.x.toFixed(1)},${tip.y.toFixed(1)} ${b1.x.toFixed(1)},${b1.y.toFixed(1)} ${b2.x.toFixed(1)},${b2.y.toFixed(1)}`} fill={C.peach} />
       <Circle cx={cx} cy={cy} r="9" fill={C.peach} />
       <Circle cx={cx} cy={cy} r="4" fill={C.bg} />
-      <SvgText x={cx} y={cy - 30} textAnchor="middle" fontSize="38" fontWeight="800" fill={C.peach}>{value}</SvgText>
+      <SvgText x={cx} y={cy - 30} textAnchor="middle" fontSize="38" fontWeight="800" fill={C.peach}>{value.toFixed(1)}</SvgText>
       <SvgText x={cx} y={cy - 11} textAnchor="middle" fontSize="9.5" fill={C.muted}>birim / dak</SvgText>
     </Svg>
   );
 }
 
 export default function HomeScreen() {
+  const [ozet, setOzet] = useState({ aktifHatSayisi: 0, toplamCikti: 0, anlikHizOrta: 0 });
+  const [canliBantlar, setCanliBantlar] = useState<Bant[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // 1. İlk yüklemede API'den gerçek veriyi çek
+    const verileriCek = async () => {
+      const [ozetVeri, bantVeri] = await Promise.all([
+        dashboardOzetiniCek(),
+        bantVerisiniCek()
+      ]);
+      setOzet(ozetVeri);
+      setCanliBantlar(bantVeri.filter(b => b.durum === "acik").slice(0, 3)); // İlk 3 açık bant
+      setLoading(false);
+    };
+
+    verileriCek();
+
+    // 2. WebSocket üzerinden anlık hız güncellemelerini dinle
+    socket.on("bant_hiz_guncelleme", (guncellemeler: { id: string, anlikHiz: number }[]) => {
+      setCanliBantlar(prev => {
+        let hizToplami = 0;
+        const yeniBantlar = prev.map(bant => {
+          const guncel = guncellemeler.find(g => g.id === bant.id);
+          const yeniHiz = guncel ? guncel.anlikHiz : bant.anlikHiz;
+          hizToplami += (yeniHiz || 0);
+          return { ...bant, anlikHiz: yeniHiz };
+        });
+        
+        // Ortalama hızı da canlı güncelle
+        if (yeniBantlar.length > 0) {
+          setOzet(eski => ({ ...eski, anlikHizOrta: hizToplami / yeniBantlar.length }));
+        }
+        
+        return yeniBantlar;
+      });
+    });
+
+    return () => {
+      socket.off("bant_hiz_guncelleme");
+    };
+  }, []);
+
   // Grafik verisi
   const lineData1 = hizProfili.map(d => ({ value: d.hiz }));
   const lineData2 = aylikUretim.map(d => ({ value: d.cikti }));
   const lineData3 = aylikUretim.map(d => ({ value: d.iyi }));
+
+  if (loading) {
+    return <View style={[s.scroll, { justifyContent: "center", alignItems: "center" }]}><ActivityIndicator color={C.peach} /></View>;
+  }
 
   return (
     <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
@@ -71,14 +118,14 @@ export default function HomeScreen() {
         <View style={s.heroBubble2} />
       </View>
 
-      {/* Stat kutucukları */}
+      {/* Stat kutucukları (GERÇEK VERİ) */}
       <View style={s.statRow}>
         <View style={[s.stat, { backgroundColor: C.mintLt }]}>
           <View style={s.statDotRow}>
             <View style={[s.dot, { backgroundColor: C.mint }]} />
             <Text style={s.statLabel}>Aktif Hatlar</Text>
           </View>
-          <Text style={[s.statNum, { color: C.text }]}>2</Text>
+          <Text style={[s.statNum, { color: C.text }]}>{ozet.aktifHatSayisi}</Text>
           <Text style={[s.statSub, { color: C.mint }]}>● Şu An Çalışıyor</Text>
         </View>
         <View style={[s.stat, { backgroundColor: C.blueLt }]}>
@@ -86,7 +133,7 @@ export default function HomeScreen() {
             <Package size={11} color={C.blue} />
             <Text style={s.statLabel}>Toplam Çıktı</Text>
           </View>
-          <Text style={[s.statNum, { color: C.text }]}>43.624</Text>
+          <Text style={[s.statNum, { color: C.text }]}>{ozet.toplamCikti.toLocaleString("tr-TR")}</Text>
           <Text style={[s.statSub, { color: C.blue }]}>+2,1% ↑</Text>
         </View>
       </View>
@@ -94,15 +141,12 @@ export default function HomeScreen() {
       {/* Bant Durumu */}
       <BantDurumuPaneli />
 
-      {/* Canlı İzleme */}
+      {/* Canlı İzleme (GERÇEK VERİ VE WEBSOCKET) */}
       <Card>
         <SH title="Canlı Makine İzleme" action="Tümünü Gör" />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -4 }}>
-          {[
-            { isim: "Tip-M · Hat 1", saat: "09:00 – 17:00", oran: "192 b/s" },
-            { isim: "Tip-M · Hat 2", saat: "09:00 – 17:00", oran: "185 b/s" },
-          ].map(m => (
-            <View key={m.isim} style={s.machineCard}>
+          {canliBantlar.map(m => (
+            <View key={m.id} style={s.machineCard}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
                 <Text style={s.machineTitle}>{m.isim}</Text>
                 <ChevronRight size={11} color={C.peach} />
@@ -113,16 +157,16 @@ export default function HomeScreen() {
               </View>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 6 }}>
                 <Clock size={8} color={C.muted} />
-                <Text style={s.machineTime}>{m.saat}</Text>
+                <Text style={s.machineTime}>09:00 – 17:00</Text>
               </View>
-              <Text style={s.machineRate}>{m.oran}</Text>
+              <Text style={s.machineRate}>{m.anlikHiz?.toFixed(1) || 0} b/s</Text>
             </View>
           ))}
         </ScrollView>
-        {/* Hız göstergesi */}
+        {/* Hız göstergesi (CANLI VERİ) */}
         <View style={s.gaugeBox}>
-          <Text style={s.gaugeLabel}>Anlık Hız</Text>
-          <SvgGauge value={0} />
+          <Text style={s.gaugeLabel}>Ortalama Anlık Hız</Text>
+          <SvgGauge value={ozet.anlikHizOrta} />
         </View>
       </Card>
 
