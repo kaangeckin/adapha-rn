@@ -3,6 +3,7 @@ import cors from "cors";
 
 import bantlarRouter from "./routes/bantlar";
 import dashboardRouter from "./routes/dashboard";
+import uretimRouter from "./routes/uretim";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,6 +15,12 @@ app.use(express.json());
 // ── API Router ──────────────────────────────────────────────────────────────
 app.use("/api/bantlar", bantlarRouter);
 app.use("/api/dashboard", dashboardRouter);
+app.use("/api/uretim", uretimRouter);
+
+// ── Bağlantı Kontrolü (Ping-Pong) ──────────────────────────────────────────
+app.get("/api/ping", (_req, res) => {
+  res.json({ status: "pong", message: "Bağlantı başarılı!", timestamp: new Date() });
+});
 
 // ── Sağlık kontrolü ────────────────────────────────────────────────────────
 app.get("/", (_req, res) => {
