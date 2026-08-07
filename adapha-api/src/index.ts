@@ -1,12 +1,17 @@
 import express from "express";
 import cors from "cors";
 
+import bantlarRouter from "./routes/bantlar";
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ── Middleware ──────────────────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
+
+// ── API Router ──────────────────────────────────────────────────────────────
+app.use("/api/bantlar", bantlarRouter);
 
 // ── Sağlık kontrolü ────────────────────────────────────────────────────────
 app.get("/", (_req, res) => {
