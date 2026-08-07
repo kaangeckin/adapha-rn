@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ── Tablo 1: Üretim Hatları ──────────────────────────────────────────────────
+model Hat {
+  id                    String                @id // "H1", "H2"
+  isim                  String                // "Hat 1 – A Blok"
+  blok                  String?
+  durum                 String                @default("pasif") // aktif, pasif, bakim
+  createdAt             DateTime              @default(now())
+  
+  bantlar               Bant[]
+  uretimPartileri       UretimPartisi[]
+  performansMetrikleri  PerformansMetrigi[]
+  bildirimler           Bildirim[]
+}
+
+// ── Tablo 2: Konveyör Bantları ───────────────────────────────────────────────
+model Bant {
+  id              String             @id // "B1", "B2"
+  hatId           String
+  isim            String             // "Bant 1 – Hat A"
+  durum           String             @default("kapali") // acik, kapali
+  anlikHiz        Float?             // birim/dakika
+  kameraUrl       String?
+  sonGuncelleme   DateTime           @default(now())
+  
+  hat             Hat                @relation(fields: [hatId], references: [id])
+  uretimKayitlari UretimKaydi[]
+}
+
+// ── Tablo 3: Üretim Çalışmaları (Partiler) ──────────────────────────────────
+model UretimPartisi {
+  id              Int                @id @default(autoincrement())
+  hatId           String
+  tip             String             // "Tip-M", "Tip-A"
+  partiAdi        String?            // "Sabah Üretim Çalışması"
+  baslangic       DateTime
+  bitis           DateTime?
+  hedefBirim      Int?
+  gercekBirim     Int                @default(0)
+  durum           String             @default("bekliyor") // bekliyor, devam, tamamlandi, iptal
+  createdAt       DateTime           @default(now())
+  
+  hat             Hat                @relation(fields: [hatId], references: [id])
+  uretimKayitlari UretimKaydi[]
+  kaliteKontrol   KaliteKontrol?
+}
+
+// ── Tablo 4: Anlık Üretim Kayıtları ─────────────────────────────────────────
+model UretimKaydi {
+  id          Int            @id @default(autoincrement())
+  bantId      String
+  partiId     Int
+  hiz         Float?         // birim/dakika
+  miktar      Int?           // üretilen adet
+  kalite      String         @default("iyi") // iyi, uyari, red
+  timestamp   DateTime       @default(now())
+  
+  bant        Bant           @relation(fields: [bantId], references: [id])
+  parti       UretimPartisi  @relation(fields: [partiId], references: [id])
+}
+
+// ── Tablo 5: Kalite Verileri ────────────────────────────────────────────────
+model KaliteKontrol {
+  id              Int            @id @default(autoincrement())
+  partiId         Int            @unique
+  toplamBirim     Int?
+  iyiBirim        Int?
+  uyariBirim      Int?
+  redBirim        Int?
+  sertifikaOrani  Float?         // %98.36
+  hataTuru        String?
+  tarih           DateTime       @default(now())
+  
+  parti           UretimPartisi  @relation(fields: [partiId], references: [id])
+}
+
+// ── Tablo 6: Hat Bazlı Performans ───────────────────────────────────────────
+model PerformansMetrigi {
+  id                Int      @id @default(autoincrement())
+  hatId             String
+  hizSkoru          Float?   // 0-100
+  kaliteSkoru       Float?
+  verimlilikSkoru   Float?
+  calismaSkoru      Float?
+  hassasiyetSkoru   Float?
+  guvenilirlikSkoru Float?
+  tarih             DateTime @default(now())
+  
+  hat               Hat      @relation(fields: [hatId], references: [id])
+}
+
+// ── Tablo 7: Alarm & Bildirimler ────────────────────────────────────────────
+model Bildirim {
+  id          Int      @id @default(autoincrement())
+  hatId       String?
+  tip         String   // acil, yuksek, orta, bilgi
+  mesaj       String
+  okundu      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  
+  hat         Hat?     @relation(fields: [hatId], references: [id])
+}
