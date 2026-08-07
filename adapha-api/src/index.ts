@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 
 import bantlarRouter from "./routes/bantlar";
+import dashboardRouter from "./routes/dashboard";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,6 +13,7 @@ app.use(express.json());
 
 // ── API Router ──────────────────────────────────────────────────────────────
 app.use("/api/bantlar", bantlarRouter);
+app.use("/api/dashboard", dashboardRouter);
 
 // ── Sağlık kontrolü ────────────────────────────────────────────────────────
 app.get("/", (_req, res) => {
