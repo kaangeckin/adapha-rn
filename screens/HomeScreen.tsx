@@ -18,7 +18,7 @@ import Svg, { Path, Line, Text as SvgText, Polygon, Circle } from "react-native-
 function SvgGauge({ value = 0 }: { value?: number }) {
   const max = 300, cx = 120, cy = 118, r = 92;
   const ang = (v: number) => Math.PI * (1 - v / max);
-  const pt  = (a: number, rad: number) => ({
+  const pt = (a: number, rad: number) => ({
     x: cx + rad * Math.cos(a),
     y: cy - rad * Math.sin(a),
   });
@@ -208,8 +208,8 @@ export default function HomeScreen() {
       <Card>
         <SH title="Üretim Özeti" action="Detaylar" />
         {[
-          { dot: C.mint,    label: "İyi Ürünler", val: "%98,36  ·  42.909" },
-          { dot: C.peachMd, label: "Hatalı",      val: "%1,64   ·  715"   },
+          { dot: C.mint, label: "İyi Ürünler", val: "%98,36  ·  42.909" },
+          { dot: C.peachMd, label: "Hatalı", val: "%1,64   ·  715" },
         ].map(r => (
           <View key={r.label} style={s.summaryRow}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -221,9 +221,9 @@ export default function HomeScreen() {
         ))}
         <View style={s.divider} />
         {[
-          { label: "En İyi Sonuç",   pct: "%98,36", adet: "42.909 birim", color: C.mint  },
-          { label: "Ortalama Sonuç", pct: "%96,0",  adet: "41.879 birim", color: C.blue  },
-          { label: "Standart Altı",  pct: "%1,64",  adet: "715 birim",    color: C.peach },
+          { label: "En İyi Sonuç", pct: "%98,36", adet: "42.909 birim", color: C.mint },
+          { label: "Ortalama Sonuç", pct: "%96,0", adet: "41.879 birim", color: C.blue },
+          { label: "Standart Altı", pct: "%1,64", adet: "715 birim", color: C.peach },
         ].map(row => (
           <View key={row.label} style={s.summaryRow}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -274,14 +274,16 @@ const s = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: C.bg },
   content: { padding: 16, gap: 16, paddingBottom: 32 },
 
-  hero: { backgroundColor: C.peach, borderRadius: 24, padding: 20, overflow: "hidden", gap: 0,
-    shadowColor: C.peach, shadowOpacity: 0.4, shadowRadius: 16, elevation: 6 },
+  hero: {
+    backgroundColor: C.peach, borderRadius: 24, padding: 20, overflow: "hidden", gap: 0,
+    shadowColor: C.peach, shadowOpacity: 0.4, shadowRadius: 16, elevation: 6
+  },
   heroBubble1: { position: "absolute", right: -32, top: -32, width: 112, height: 112, borderRadius: 56, backgroundColor: "rgba(255,255,255,0.13)" },
   heroBubble2: { position: "absolute", right: 20, bottom: 12, width: 48, height: 48, borderRadius: 24, backgroundColor: "rgba(255,255,255,0.09)" },
-  heroDate:    { color: "rgba(255,255,255,0.7)", fontSize: 10, marginBottom: 2 },
-  heroTitle:   { color: "white", fontSize: 21, fontWeight: "800", lineHeight: 26 },
-  heroSub:     { color: "rgba(255,255,255,0.65)", fontSize: 10, marginBottom: 12 },
-  heroBtn:     { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(255,255,255,0.20)", paddingHorizontal: 14, paddingVertical: 6, borderRadius: 12, alignSelf: "flex-start" },
+  heroDate: { color: "rgba(255,255,255,0.7)", fontSize: 10, marginBottom: 2 },
+  heroTitle: { color: "white", fontSize: 21, fontWeight: "800", lineHeight: 26 },
+  heroSub: { color: "rgba(255,255,255,0.65)", fontSize: 10, marginBottom: 12 },
+  heroBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(255,255,255,0.20)", paddingHorizontal: 14, paddingVertical: 6, borderRadius: 12, alignSelf: "flex-start" },
   heroBtnText: { color: "white", fontSize: 11, fontWeight: "600" },
 
   statRow: { flexDirection: "row", gap: 12 },

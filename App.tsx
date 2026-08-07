@@ -50,16 +50,16 @@ export default function App() {
               tabBarInactiveTintColor: C.muted,
               tabBarLabelStyle: styles.tabLabel,
               tabBarIcon: ({ color, size }) => {
-                if (route.name === "AnaSayfa")  return <Home     size={size} color={color} />;
-                if (route.name === "Üretim")    return <Package  size={size} color={color} />;
+                if (route.name === "AnaSayfa") return <Home size={size} color={color} />;
+                if (route.name === "Üretim") return <Package size={size} color={color} />;
                 if (route.name === "Analitikler") return <BarChart2 size={size} color={color} />;
               },
               tabBarItemStyle: styles.tabItem,
             })}
           >
-            <Tab.Screen name="AnaSayfa"    component={HomeScreen}    options={{ title: "Ana Sayfa"   }} />
-            <Tab.Screen name="Üretim"      component={UretimEkrani}  options={{ title: "Üretim"      }} />
-            <Tab.Screen name="Analitikler" component={AnalizEkrani}  options={{ title: "Analitikler" }} />
+            <Tab.Screen name="AnaSayfa" component={HomeScreen} options={{ title: "Ana Sayfa" }} />
+            <Tab.Screen name="Üretim" component={UretimEkrani} options={{ title: "Üretim" }} />
+            <Tab.Screen name="Analitikler" component={AnalizEkrani} options={{ title: "Analitikler" }} />
           </Tab.Navigator>
         </NavigationContainer>
       </View>
