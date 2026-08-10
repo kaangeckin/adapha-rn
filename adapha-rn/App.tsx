@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StatusBar, StyleSheet, Platform } from "react-native";
+import { View, Text, StatusBar, StyleSheet, Platform, TouchableOpacity } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,25 +8,31 @@ import { C } from "./constants/colors";
 import HomeScreen from "./screens/HomeScreen";
 import UretimEkrani from "./screens/UretimEkrani";
 import AnalizEkrani from "./screens/AnalizEkrani";
+import AdminEkrani from "./screens/AdminEkrani";
+import BildirimlerEkrani from "./screens/BildirimlerEkrani";
+import { GlobalNotification } from "./components/GlobalNotification";
+import { useNavigation } from "@react-navigation/native";
 
 const Tab = createBottomTabNavigator();
 
 function AppHeader() {
+  const navigation = useNavigation<any>();
+
   return (
     <View style={styles.header}>
       <View style={styles.headerLeft}>
-        <View style={styles.menuBtn}>
+        <TouchableOpacity style={styles.menuBtn} onPress={() => navigation.navigate("Admin")}>
           <AlignLeft size={16} color={C.peach} />
-        </View>
+        </TouchableOpacity>
         <View>
           <Text style={styles.platformTag}>JWC Platform</Text>
           <Text style={styles.companyName}>Jiangsu JWC Machinery</Text>
         </View>
       </View>
       <View style={styles.headerRight}>
-        <View style={styles.iconBtn}>
+        <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate("Bildirimler")}>
           <Bell size={14} color={C.peach} />
-        </View>
+        </TouchableOpacity>
         <View style={[styles.iconBtn, { backgroundColor: C.blueLt }]}>
           <RefreshCw size={13} color={C.blue} />
         </View>
@@ -39,9 +45,10 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
-      <View style={styles.container}>
-        <AppHeader />
-        <NavigationContainer>
+      <GlobalNotification />
+      <NavigationContainer>
+        <View style={styles.container}>
+          <AppHeader />
           <Tab.Navigator
             screenOptions={({ route }) => ({
               headerShown: false,
@@ -60,9 +67,11 @@ export default function App() {
             <Tab.Screen name="AnaSayfa" component={HomeScreen} options={{ title: "Ana Sayfa" }} />
             <Tab.Screen name="Üretim" component={UretimEkrani} options={{ title: "Üretim" }} />
             <Tab.Screen name="Analitikler" component={AnalizEkrani} options={{ title: "Analitikler" }} />
+            <Tab.Screen name="Admin" component={AdminEkrani} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
+            <Tab.Screen name="Bildirimler" component={BildirimlerEkrani} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
           </Tab.Navigator>
-        </NavigationContainer>
-      </View>
+        </View>
+      </NavigationContainer>
     </SafeAreaProvider>
   );
 }

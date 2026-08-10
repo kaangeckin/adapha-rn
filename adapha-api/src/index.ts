@@ -9,6 +9,7 @@ import dashboardRouter from "./routes/dashboard";
 import uretimRouter from "./routes/uretim";
 import analitikRouter from "./routes/analitik";
 import piRouter from "./routes/pi";
+import adminRouter from "./routes/admin";
 import { baslatPiSync } from "./services/piSync";
 
 const app = express();
@@ -22,6 +23,7 @@ const io = new Server(httpServer, {
     origin: "*", // Mobil uygulamanın her yerden bağlanabilmesi için
   },
 });
+export const getIo = () => io;
 
 io.on("connection", (socket) => {
   console.log(`Yeni bir mobil uygulama bağlandı: ${socket.id}`);
@@ -102,6 +104,7 @@ app.use("/api/dashboard", dashboardRouter);
 app.use("/api/uretim", uretimRouter);
 app.use("/api/analitik", analitikRouter);
 app.use("/api/pi", piRouter);
+app.use("/api/admin", adminRouter);
 
 // ── Bağlantı Kontrolü (Ping-Pong) ──────────────────────────────────────────
 app.get("/api/ping", (_req, res) => {

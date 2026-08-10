@@ -7,6 +7,22 @@ const prisma = new PrismaClient();
 // Aktif bağlantıları ve reconnect deneme sayılarını takip etmek için
 const connections = new Map<string, WebSocket>();
 const reconnectAttempts = new Map<string, number>();
+const reconnectTimeouts = new Map<string, NodeJS.Timeout>();
+
+export function reconnectMakine(bantId: string, yeniIp: string, io: Server) {
+  if (reconnectTimeouts.has(bantId)) {
+    clearTimeout(reconnectTimeouts.get(bantId)!);
+    reconnectTimeouts.delete(bantId);
+  }
+  if (connections.has(bantId)) {
+    const ws = connections.get(bantId);
+    ws?.removeAllListeners("close");
+    ws?.close();
+    connections.delete(bantId);
+  }
+  reconnectAttempts.set(bantId, 0);
+  baglanMakineye(bantId, yeniIp, io);
+}
 
 /**
  * Veritabanında kayıtlı olan ve piIpAdresi bulunan bantlar için
@@ -41,10 +57,19 @@ function baglanMakineye(bantId: string, piIp: string, io: Server) {
 
   const ws = new WebSocket(url);
 
-  ws.on("open", () => {
+  ws.on("open", async () => {
     console.log(`✅ [Bant ${bantId}] Raspberry Pi'ye başarıyla bağlandı!`);
     connections.set(bantId, ws);
     reconnectAttempts.set(bantId, 0); // Başarılı bağlantıda sıfırla
+    
+    // Sistem bildirimi
+    try {
+      const mesaj = `✅ ${bantId} cihazına başarıyla bağlandı.`;
+      const yeniBildirim = await prisma.bildirim.create({
+        data: { hatId: bantId, tip: 'bilgi', mesaj }
+      });
+      io.emit("sistem_bildirimi", { id: yeniBildirim.id, bantId, tip: 'baglandi', mesaj, tarih: yeniBildirim.tarih });
+    } catch(e) {}
   });
 
   ws.on("message", async (data) => {
@@ -83,8 +108,17 @@ function baglanMakineye(bantId: string, piIp: string, io: Server) {
     }
   });
 
-  ws.on("close", () => {
+  ws.on("close", async () => {
     connections.delete(bantId);
+    
+    // Bildirim at
+    try {
+      const mesaj = `⚠️ ${bantId} cihazı ile bağlantı koptu!`;
+      const yeniBildirim = await prisma.bildirim.create({
+        data: { hatId: bantId, tip: 'hata', mesaj }
+      });
+      io.emit("sistem_bildirimi", { id: yeniBildirim.id, bantId, tip: 'koptu', mesaj, tarih: yeniBildirim.tarih });
+    } catch (e) {}
     
     let attempts = reconnectAttempts.get(bantId) || 0;
     // Üstel geri çekilme (1, 2, 4, 8, 16, 30 max)
@@ -94,7 +128,8 @@ function baglanMakineye(bantId: string, piIp: string, io: Server) {
     console.log(`❌ [Bant ${bantId}] Bağlantı koptu. ${delay / 1000} saniye sonra tekrar denenecek...`);
     
     reconnectAttempts.set(bantId, attempts + 1);
-    setTimeout(() => baglanMakineye(bantId, piIp, io), delay);
+    const timeoutId = setTimeout(() => baglanMakineye(bantId, piIp, io), delay);
+    reconnectTimeouts.set(bantId, timeoutId);
   });
 
   ws.on("error", (err) => {
