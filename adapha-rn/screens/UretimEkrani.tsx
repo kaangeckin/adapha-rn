@@ -1,17 +1,34 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions,
+  View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, ActivityIndicator
 } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
-import { Plus, ChevronRight, Settings2 } from "lucide-react-native";
+import { Plus, ChevronRight, Settings2, Download, CheckCircle, X } from "lucide-react-native";
 import { C } from "../constants/colors";
 import { Card, SH } from "../components/Card";
-import { hizProfili, performansTablo } from "../services/api";
+import ModalBottomSheet from "../components/ModalBottomSheet";
+import { hizProfili } from "../services/api";
 
 const W = Dimensions.get("window").width;
 
+// Parti detayları
+const TUM_PARTILER = [
+  { tarih: "12 Ağu 09:00", sure: "3 saat", birim: "Birim: 100", baslik: "Sabah Üretim Çalışması",   rozet: "Hat-01", durum: "Tamamlandı",   tip: "Tip-M", verim: "%98,4", hata: "2 birim" },
+  { tarih: "12 Ağu 11:00", sure: "3 saat", birim: "Birim: 100", baslik: "Öğleden Sonra Çalışma",   rozet: "Hat-02", durum: "Devam Ediyor", tip: "Tip-A", verim: "%96,1", hata: "4 birim" },
+  { tarih: "11 Ağu 09:00", sure: "4 saat", birim: "Birim: 120", baslik: "Gece Çalışması",           rozet: "Hat-03", durum: "Tamamlandı",   tip: "Tip-B", verim: "%99,1", hata: "1 birim" },
+  { tarih: "11 Ağu 14:00", sure: "2 saat", birim: "Birim: 80",  baslik: "Özel Sipariş Çalışması",  rozet: "Hat-01", durum: "Tamamlandı",   tip: "Tip-M", verim: "%97,5", hata: "2 birim" },
+];
+
 export default function UretimEkrani() {
   const [aktifFiltre, setAktifFiltre] = useState("Tümü");
+  const [yeniCalismaModal, setYeniCalismaModal] = useState(false);
+  const [detayModal, setDetayModal] = useState(false);
+  const [seciliParti, setSeciliParti] = useState<typeof TUM_PARTILER[0] | null>(null);
+  const [raporYukleniyor, setRaporYukleniyor] = useState(false);
+  const [raporBasarili, setRaporBasarili] = useState(false);
+  const [secilenHat, setSecilenHat] = useState("Hat-01");
+  const [secilenTip, setSecilenTip] = useState("Tip-M");
+  const [calismaOlusturuldu, setCalismaOlusturuldu] = useState(false);
 
   const lineData1 = hizProfili.map(d => ({ value: d.hiz }));
   const lineData2 = hizProfili.map(d => ({ value: d.miktar }));
@@ -21,6 +38,27 @@ export default function UretimEkrani() {
     { label: "Uyarı",      val: "%1,0",   pct: 1.0,   color: C.sand  },
     { label: "Reddedildi", val: "%0,64",  pct: 0.64,  color: C.peach },
   ];
+
+  const filtreliPartiler = aktifFiltre === "Tümü"
+    ? TUM_PARTILER
+    : TUM_PARTILER.filter(p => p.tip === aktifFiltre);
+
+  // Rapor İndir simülasyonu
+  const raporIndir = () => {
+    setRaporYukleniyor(true);
+    setRaporBasarili(false);
+    setTimeout(() => {
+      setRaporYukleniyor(false);
+      setRaporBasarili(true);
+      setTimeout(() => setRaporBasarili(false), 3000);
+    }, 2000);
+  };
+
+  const yeniCalismaOlustur = () => {
+    setYeniCalismaModal(false);
+    setCalismaOlusturuldu(true);
+    setTimeout(() => setCalismaOlusturuldu(false), 3000);
+  };
 
   return (
     <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
@@ -32,11 +70,25 @@ export default function UretimEkrani() {
           <Text style={s.pageTitle}>Üretim</Text>
           <Text style={s.pageSub}>Yönetimi</Text>
         </View>
-        <TouchableOpacity style={s.addBtn}>
+        <TouchableOpacity style={s.addBtn} onPress={() => setYeniCalismaModal(true)}>
           <Plus size={13} color="white" />
           <Text style={s.addBtnText}>Yeni Çalışma</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Başarı / Bildirim Toastları */}
+      {raporBasarili && (
+        <View style={s.toast}>
+          <CheckCircle size={14} color={C.mint} />
+          <Text style={s.toastText}>Rapor başarıyla indirildi!</Text>
+        </View>
+      )}
+      {calismaOlusturuldu && (
+        <View style={s.toast}>
+          <CheckCircle size={14} color={C.mint} />
+          <Text style={s.toastText}>Yeni çalışma oluşturuldu!</Text>
+        </View>
+      )}
 
       {/* İstatistikler */}
       <View style={s.statRow}>
@@ -60,11 +112,15 @@ export default function UretimEkrani() {
         </View>
       </View>
 
-
-
       {/* Hız & Kalite Profili */}
       <Card>
-        <SH title="Hız & Kalite Profili" action="Detaylar" />
+        <SH title="Hız & Kalite Profili" action="Rapor İndir" onAction={raporIndir} />
+        {raporYukleniyor && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10, backgroundColor: C.blueLt, padding: 10, borderRadius: 12 }}>
+            <ActivityIndicator size="small" color={C.blue} />
+            <Text style={{ fontSize: 11, color: C.blue }}>Rapor hazırlanıyor...</Text>
+          </View>
+        )}
         <View style={{ flexDirection: "row", gap: 16, marginBottom: 12 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <View style={{ width: 16, height: 2, backgroundColor: C.peach, borderRadius: 1 }} />
@@ -142,7 +198,7 @@ export default function UretimEkrani() {
       </View>
 
       {/* Ekle butonu */}
-      <TouchableOpacity style={s.primaryBtn}>
+      <TouchableOpacity style={s.primaryBtn} onPress={() => setYeniCalismaModal(true)}>
         <Plus size={15} color="white" />
         <Text style={s.primaryBtnText}>Yeni Çalışma Ekle</Text>
       </TouchableOpacity>
@@ -158,10 +214,7 @@ export default function UretimEkrani() {
       </ScrollView>
 
       {/* Parti kartları */}
-      {[
-        { tarih: "12 Ağu 09:00", sure: "3 saat", birim: "Birim: 100", baslik: "Sabah Üretim Çalışması", rozet: "Hat-01", durum: "Tamamlandı"   },
-        { tarih: "12 Ağu 11:00", sure: "3 saat", birim: "Birim: 100", baslik: "Öğleden Sonra Çalışma", rozet: "Hat-02", durum: "Devam Ediyor" },
-      ].map((b, i) => (
+      {filtreliPartiler.map((b, i) => (
         <View key={i} style={s.partiCard}>
           <View style={[s.partiTop, { backgroundColor: C.peachLt }]}>
             <Text style={s.partiMeta}>{b.tarih}</Text>
@@ -180,16 +233,112 @@ export default function UretimEkrani() {
                 </View>
               </View>
             </View>
-            <TouchableOpacity style={[s.detayBtn, { backgroundColor: C.peach }]}>
+            <TouchableOpacity
+              style={[s.detayBtn, { backgroundColor: C.peach }]}
+              onPress={() => { setSeciliParti(b); setDetayModal(true); }}
+            >
               <Text style={s.detayBtnText}>Detay</Text>
             </TouchableOpacity>
           </View>
         </View>
       ))}
 
-      <TouchableOpacity style={{ alignItems: "center", paddingVertical: 4 }}>
-        <Text style={{ fontSize: 12, fontWeight: "600", color: C.peach }}>Tümünü Gör →</Text>
-      </TouchableOpacity>
+      {filtreliPartiler.length === 0 && (
+        <View style={{ alignItems: "center", paddingVertical: 24 }}>
+          <Text style={{ fontSize: 13, color: C.muted }}>Bu tipte parti bulunamadı.</Text>
+        </View>
+      )}
+
+      {/* ───── MODALLAR ───── */}
+
+      {/* Yeni Çalışma Modalı */}
+      <ModalBottomSheet
+        visible={yeniCalismaModal}
+        onClose={() => setYeniCalismaModal(false)}
+        title="Yeni Çalışma Oluştur"
+      >
+        <View style={{ gap: 16, paddingBottom: 8 }}>
+          <View>
+            <Text style={s.formLabel}>Hat Seçimi</Text>
+            <View style={s.optionRow}>
+              {["Hat-01", "Hat-02", "Hat-03", "Hat-04"].map(h => (
+                <TouchableOpacity
+                  key={h}
+                  style={[s.optionChip, secilenHat === h && { backgroundColor: C.peach, borderColor: C.peach }]}
+                  onPress={() => setSecilenHat(h)}
+                >
+                  <Text style={[s.optionChipText, secilenHat === h && { color: "white" }]}>{h}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View>
+            <Text style={s.formLabel}>Ürün Tipi</Text>
+            <View style={s.optionRow}>
+              {["Tip-M", "Tip-A", "Tip-B", "Tip-C"].map(t => (
+                <TouchableOpacity
+                  key={t}
+                  style={[s.optionChip, secilenTip === t && { backgroundColor: C.peach, borderColor: C.peach }]}
+                  onPress={() => setSecilenTip(t)}
+                >
+                  <Text style={[s.optionChipText, secilenTip === t && { color: "white" }]}>{t}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={[s.infoBox, { backgroundColor: C.mintLt }]}>
+            <Text style={{ fontSize: 11, color: C.mint, fontWeight: "600" }}>Özet</Text>
+            <Text style={{ fontSize: 12, color: C.text, marginTop: 4 }}>
+              <Text style={{ fontWeight: "700" }}>{secilenHat}</Text> hattında{" "}
+              <Text style={{ fontWeight: "700" }}>{secilenTip}</Text> tipinde yeni çalışma başlatılacak.
+            </Text>
+          </View>
+
+          <TouchableOpacity style={s.primaryBtn} onPress={yeniCalismaOlustur}>
+            <Plus size={15} color="white" />
+            <Text style={s.primaryBtnText}>Çalışmayı Başlat</Text>
+          </TouchableOpacity>
+        </View>
+      </ModalBottomSheet>
+
+      {/* Parti Detay Modalı */}
+      <ModalBottomSheet
+        visible={detayModal}
+        onClose={() => setDetayModal(false)}
+        title="Parti Detayları"
+      >
+        {seciliParti && (
+          <View style={{ gap: 12, paddingBottom: 8 }}>
+            <View style={[s.infoBox, { backgroundColor: C.peachLt }]}>
+              <Text style={{ fontSize: 16, fontWeight: "800", color: C.text }}>{seciliParti.baslik}</Text>
+              <Text style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{seciliParti.tarih} · {seciliParti.sure}</Text>
+            </View>
+
+            {[
+              { label: "Hat",        val: seciliParti.rozet },
+              { label: "Ürün Tipi",  val: seciliParti.tip   },
+              { label: "Birim",      val: seciliParti.birim  },
+              { label: "Verimlilik", val: seciliParti.verim  },
+              { label: "Hata",       val: seciliParti.hata   },
+              { label: "Durum",      val: seciliParti.durum  },
+            ].map(r => (
+              <View key={r.label} style={s.detailRow}>
+                <Text style={s.detailLabel}>{r.label}</Text>
+                <Text style={s.detailVal}>{r.val}</Text>
+              </View>
+            ))}
+
+            <View style={[s.infoBox, { backgroundColor: seciliParti.durum === "Tamamlandı" ? C.mintLt : C.peachLt }]}>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: seciliParti.durum === "Tamamlandı" ? C.mint : C.peach }}>
+                {seciliParti.durum === "Tamamlandı" ? "✓ Bu parti başarıyla tamamlandı." : "⏳ Bu parti hâlâ devam ediyor."}
+              </Text>
+            </View>
+          </View>
+        )}
+      </ModalBottomSheet>
+
     </ScrollView>
   );
 }
@@ -209,7 +358,6 @@ const s = StyleSheet.create({
   statNum: { fontSize: 26, fontWeight: "800", color: C.text },
   miniTag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 99 },
   miniTagText: { fontSize: 8, fontWeight: "700", color: "white" },
-
   typeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   manageTile: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: C.border },
   manageIcon: { width: 40, height: 40, borderRadius: 12, justifyContent: "center", alignItems: "center" },
@@ -226,4 +374,14 @@ const s = StyleSheet.create({
   partiTagText: { fontSize: 9, fontWeight: "600" },
   detayBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
   detayBtnText: { color: "white", fontSize: 11, fontWeight: "700" },
+  toast: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: C.mintLt, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.mint },
+  toastText: { fontSize: 12, fontWeight: "600", color: C.mint },
+  formLabel: { fontSize: 12, fontWeight: "600", color: C.text, marginBottom: 10 },
+  optionRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  optionChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1.5, borderColor: C.border, backgroundColor: "white" },
+  optionChipText: { fontSize: 12, fontWeight: "600", color: C.muted },
+  infoBox: { borderRadius: 12, padding: 14 },
+  detailRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.border },
+  detailLabel: { fontSize: 12, color: C.muted },
+  detailVal: { fontSize: 12, fontWeight: "700", color: C.text },
 });

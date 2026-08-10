@@ -3,9 +3,10 @@ import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, ActivityIndicator
 } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
-import { Download, ChevronRight, Zap, Award, Calendar } from "lucide-react-native";
+import { Download, ChevronRight, Zap, Award, Calendar, CheckCircle } from "lucide-react-native";
 import { C } from "../constants/colors";
 import { Card, SH } from "../components/Card";
+import ModalBottomSheet from "../components/ModalBottomSheet";
 import { partiBuyume, radarVerisiniCek, performansTablosunuCek, isiHaritasiniCek } from "../services/api";
 
 const W = Dimensions.get("window").width;
@@ -65,6 +66,9 @@ export default function AnalizEkrani() {
   const [radarData, setRadarData] = useState<any[]>([]);
   const [performansData, setPerformansData] = useState<any[]>([]);
   const [isiData, setIsiData] = useState<{ hatlar: string[], sutunlar: string[], degerler: number[][] }>({ hatlar: [], sutunlar: [], degerler: [] });
+  const [raporYukleniyor, setRaporYukleniyor] = useState(false);
+  const [raporBasarili, setRaporBasarili] = useState(false);
+  const [detayModal, setDetayModal] = useState(false);
 
   useEffect(() => {
     const veriCek = async () => {
@@ -85,6 +89,17 @@ export default function AnalizEkrani() {
     };
     veriCek();
   }, []);
+
+  const raporIndir = () => {
+    setRaporYukleniyor(true);
+    setRaporBasarili(false);
+    setTimeout(() => {
+      setRaporYukleniyor(false);
+      setRaporBasarili(true);
+      setTimeout(() => setRaporBasarili(false), 3000);
+    }, 2000);
+  };
+
 
   const buyumeData = partiBuyume.map(d => ({ value: d.r }));
 
@@ -108,11 +123,28 @@ export default function AnalizEkrani() {
           <Text style={s.pageTitle}>Sonuçlar &</Text>
           <Text style={s.pageTitle}>Analitikler</Text>
         </View>
-        <TouchableOpacity style={[s.exportBtn, { backgroundColor: C.blueLt, borderColor: C.border }]}>
-          <Download size={12} color={C.blue} />
-          <Text style={[s.exportBtnText, { color: C.blue }]}>Rapor İndir</Text>
+        <TouchableOpacity
+          style={[s.exportBtn, { backgroundColor: raporYukleniyor ? C.blueLt : C.blue, borderColor: C.blue }]}
+          onPress={raporIndir}
+          disabled={raporYukleniyor}
+        >
+          {raporYukleniyor
+            ? <ActivityIndicator size="small" color="white" />
+            : <Download size={12} color="white" />
+          }
+          <Text style={[s.exportBtnText, { color: "white" }]}>
+            {raporYukleniyor ? "Hazırlanıyor..." : "Rapor İndir"}
+          </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Rapor Başarı Toast */}
+      {raporBasarili && (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: C.mintLt, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.mint }}>
+          <CheckCircle size={14} color={C.mint} />
+          <Text style={{ fontSize: 12, fontWeight: "600", color: C.mint }}>Rapor başarıyla indirildi!</Text>
+        </View>
+      )}
 
       {/* Stat kutucukları */}
       <View style={{ flexDirection: "row", gap: 12 }}>
@@ -219,7 +251,7 @@ export default function AnalizEkrani() {
 
       {/* Radar Grafiği */}
       <Card>
-        <SH title="Kategoriye Göre Makine Performansı" action="Detaylar" />
+        <SH title="Kategoriye Göre Makine Performansı" action="Detaylar" onAction={() => setDetayModal(true)} />
         <View style={{ alignItems: "center" }}>
           <RadarGraf data={radarData} />
         </View>
@@ -321,6 +353,39 @@ export default function AnalizEkrani() {
           );
         })}
       </Card>
+
+      {/* Detaylar Bilgi Modalı */}
+      <ModalBottomSheet
+        visible={detayModal}
+        onClose={() => setDetayModal(false)}
+        title="Radar Grafiği Hakkında"
+      >
+        <View style={{ gap: 14, paddingBottom: 8 }}>
+          <View style={{ backgroundColor: C.blueLt, borderRadius: 12, padding: 14 }}>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: C.text, marginBottom: 6 }}>Bu grafik ne gösteriyor?</Text>
+            <Text style={{ fontSize: 12, color: C.muted, lineHeight: 20 }}>
+              Radar grafiği, makinelerinizin 6 farklı performans kategorisindeki genel durumunu karşılaştırmalı olarak gösterir.
+            </Text>
+          </View>
+          {[
+            { label: "Hız", desc: "Makinenin anlık bant hızı (b/dak)" },
+            { label: "Kalite", desc: "İyi ürün oranı (%)" },
+            { label: "Verimlilik", desc: "Planlanan üretim hedefine ulaşma oranı" },
+            { label: "Çalışma", desc: "Toplam açık kalma süresi oranı" },
+            { label: "Hassasiyet", desc: "Hata payı düşük olan üretim adedi" },
+            { label: "Güvenilirlik", desc: "Arıza olmadan çalışma sürekliliği" },
+          ].map(item => (
+            <View key={item.label} style={{ flexDirection: "row", gap: 12, alignItems: "flex-start" }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: C.peach, marginTop: 5 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: C.text }}>{item.label}</Text>
+                <Text style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{item.desc}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </ModalBottomSheet>
+
     </ScrollView>
   );
 }

@@ -13,8 +13,8 @@ export interface Bant {
 }
 
 // ── Sunucu IP Adresi (Uygulamanın çalıştığı ağdaki bilgisayarın IP'si) ──
-const API_URL = "http://192.168.1.199:3000/api";
-export const SOCKET_URL = "http://192.168.1.199:3000";
+const API_URL = "http://192.168.1.187:3000/api";
+export const SOCKET_URL = "http://192.168.1.187:3000";
 
 // Socket bağlantısını oluştur
 export const socket: Socket = io(SOCKET_URL);

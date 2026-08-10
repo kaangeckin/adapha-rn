@@ -4,11 +4,13 @@ import {
 } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
 import {
-  Zap, Package, Clock, ChevronRight, Shield, Search,
+  Zap, Package, Clock, ChevronRight, Shield, Search, Plus,
 } from "lucide-react-native";
+import { useNavigation } from "@react-navigation/native";
 import { C } from "../constants/colors";
 import { Card, SH } from "../components/Card";
 import { BantDurumuPaneli } from "../components/BantDurumuPaneli";
+import ModalBottomSheet from "../components/ModalBottomSheet";
 import { hizProfili, aylikUretim, programVerisi, dashboardOzetiniCek, bantVerisiniCek, socket, Bant } from "../services/api";
 
 const W = Dimensions.get("window").width;
@@ -48,9 +50,15 @@ function SvgGauge({ value = 0 }: { value?: number }) {
 }
 
 export default function HomeScreen() {
+  const navigation = useNavigation<any>();
   const [ozet, setOzet] = useState({ aktifHatSayisi: 0, toplamCikti: 0, anlikHizOrta: 0 });
   const [canliBantlar, setCanliBantlar] = useState<Bant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [yeniCalismaModal, setYeniCalismaModal] = useState(false);
+  const [aktifProgramFiltre, setAktifProgramFiltre] = useState("Tümü");
+  const [secilenHat, setSecilenHat] = useState("Hat-01");
+  const [secilenTip, setSecilenTip] = useState("Tip-M");
+  const [calismaOlusturuldu, setCalismaOlusturuldu] = useState(false);
 
   useEffect(() => {
     // 1. İlk yüklemede API'den gerçek veriyi çek
@@ -109,7 +117,7 @@ export default function HomeScreen() {
           <Text style={s.heroDate}>6 Ağustos 2026</Text>
           <Text style={s.heroTitle}>Makine Genel Bakış</Text>
           <Text style={s.heroSub}>Jiangsu JWC Machinery Co., Ltd</Text>
-          <TouchableOpacity style={s.heroBtn}>
+          <TouchableOpacity style={s.heroBtn} onPress={() => setYeniCalismaModal(true)}>
             <Zap size={12} color="white" />
             <Text style={s.heroBtnText}>Yeni Çalışma Başlat</Text>
           </TouchableOpacity>
@@ -117,6 +125,13 @@ export default function HomeScreen() {
         <View style={s.heroBubble1} />
         <View style={s.heroBubble2} />
       </View>
+
+      {/* Başarı bildirimi */}
+      {calismaOlusturuldu && (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: C.mintLt, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.mint }}>
+          <Text style={{ fontSize: 12, fontWeight: "600", color: C.mint }}>✓ Yeni çalışma oluşturuldu!</Text>
+        </View>
+      )}
 
       {/* Stat kutucukları (GERÇEK VERİ) */}
       <View style={s.statRow}>
@@ -143,7 +158,7 @@ export default function HomeScreen() {
 
       {/* Canlı İzleme (GERÇEK VERİ VE WEBSOCKET) */}
       <Card>
-        <SH title="Canlı Makine İzleme" action="Tümünü Gör" />
+        <SH title="Canlı Makine İzleme" action="Tümünü Gör" onAction={() => navigation.navigate("Üretim")} />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -4 }}>
           {canliBantlar.map(m => (
             <View key={m.id} style={s.machineCard}>
@@ -290,9 +305,9 @@ export default function HomeScreen() {
           <Text style={s.searchText}>Program ara...</Text>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-          {["Tümü", "Tip-M", "Tip-A", "Tip-B"].map((f, i) => (
-            <TouchableOpacity key={f} style={[s.chip, i === 0 ? { backgroundColor: C.peach } : { backgroundColor: C.blueLt }]}>
-              <Text style={[s.chipText, { color: i === 0 ? "white" : C.muted }]}>{f}</Text>
+          {["Tümü", "Tip-M", "Tip-A", "Tip-B"].map((f) => (
+            <TouchableOpacity key={f} onPress={() => setAktifProgramFiltre(f)} style={[s.chip, aktifProgramFiltre === f ? { backgroundColor: C.peach } : { backgroundColor: C.blueLt }]}>
+              <Text style={[s.chipText, { color: aktifProgramFiltre === f ? "white" : C.muted }]}>{f}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -301,8 +316,10 @@ export default function HomeScreen() {
             <Text key={h} style={s.tableHeaderText}>{h}</Text>
           ))}
         </View>
-        {programVerisi.map((row, i) => (
-          <View key={i} style={[s.tableRow, { borderBottomColor: C.border, borderBottomWidth: i < programVerisi.length - 1 ? 1 : 0 }]}>
+        {programVerisi
+          .filter(row => aktifProgramFiltre === "Tümü" || row.tip === aktifProgramFiltre)
+          .map((row, i, arr) => (
+          <View key={i} style={[s.tableRow, { borderBottomColor: C.border, borderBottomWidth: i < arr.length - 1 ? 1 : 0 }]}>
             <Text style={s.tableCell}>{row.parti}</Text>
             <Text style={s.tableCell}>{row.hat}</Text>
             <Text style={s.tableCell}>{row.tip}</Text>
@@ -310,6 +327,63 @@ export default function HomeScreen() {
           </View>
         ))}
       </Card>
+
+      {/* Yeni Çalışma Modalı */}
+      <ModalBottomSheet
+        visible={yeniCalismaModal}
+        onClose={() => setYeniCalismaModal(false)}
+        title="Yeni Çalışma Oluştur"
+      >
+        <View style={{ gap: 16, paddingBottom: 8 }}>
+          <View>
+            <Text style={{ fontSize: 12, fontWeight: "600", color: C.text, marginBottom: 10 }}>Hat Seçimi</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {["Hat-01", "Hat-02", "Hat-03", "Hat-04"].map(h => (
+                <TouchableOpacity
+                  key={h}
+                  style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1.5, borderColor: secilenHat === h ? C.peach : C.border, backgroundColor: secilenHat === h ? C.peach : "white" }}
+                  onPress={() => setSecilenHat(h)}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: secilenHat === h ? "white" : C.muted }}>{h}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          <View>
+            <Text style={{ fontSize: 12, fontWeight: "600", color: C.text, marginBottom: 10 }}>Ürün Tipi</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {["Tip-M", "Tip-A", "Tip-B", "Tip-C"].map(t => (
+                <TouchableOpacity
+                  key={t}
+                  style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1.5, borderColor: secilenTip === t ? C.peach : C.border, backgroundColor: secilenTip === t ? C.peach : "white" }}
+                  onPress={() => setSecilenTip(t)}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: secilenTip === t ? "white" : C.muted }}>{t}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          <View style={{ borderRadius: 12, padding: 14, backgroundColor: C.mintLt }}>
+            <Text style={{ fontSize: 11, color: C.mint, fontWeight: "600" }}>Özet</Text>
+            <Text style={{ fontSize: 12, color: C.text, marginTop: 4 }}>
+              <Text style={{ fontWeight: "700" }}>{secilenHat}</Text> hattında{" "}
+              <Text style={{ fontWeight: "700" }}>{secilenTip}</Text> tipinde yeni çalışma başlatılacak.
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: C.peach, paddingVertical: 12, borderRadius: 16 }}
+            onPress={() => {
+              setYeniCalismaModal(false);
+              setCalismaOlusturuldu(true);
+              setTimeout(() => setCalismaOlusturuldu(false), 3000);
+            }}
+          >
+            <Plus size={15} color="white" />
+            <Text style={{ color: "white", fontSize: 13, fontWeight: "700" }}>Çalışmayı Başlat</Text>
+          </TouchableOpacity>
+        </View>
+      </ModalBottomSheet>
+
     </ScrollView>
   );
 }
