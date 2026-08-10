@@ -8,6 +8,7 @@ import bantlarRouter from "./routes/bantlar";
 import dashboardRouter from "./routes/dashboard";
 import uretimRouter from "./routes/uretim";
 import analitikRouter from "./routes/analitik";
+import piRouter from "./routes/pi";
 import { baslatPiSync } from "./services/piSync";
 
 const app = express();
@@ -100,6 +101,7 @@ app.use("/api/bantlar", bantlarRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/uretim", uretimRouter);
 app.use("/api/analitik", analitikRouter);
+app.use("/api/pi", piRouter);
 
 // ── Bağlantı Kontrolü (Ping-Pong) ──────────────────────────────────────────
 app.get("/api/ping", (_req, res) => {

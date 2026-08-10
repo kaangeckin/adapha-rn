@@ -7,7 +7,7 @@ import { Download, ChevronRight, Zap, Award, Calendar, CheckCircle } from "lucid
 import { C } from "../constants/colors";
 import { Card, SH } from "../components/Card";
 import ModalBottomSheet from "../components/ModalBottomSheet";
-import { partiBuyume, radarVerisiniCek, performansTablosunuCek, isiHaritasiniCek, bantVerisiniCek, socket, Bant } from "../services/api";
+import { partiBuyume, radarVerisiniCek, performansTablosunuCek, isiHaritasiniCek, bantVerisiniCek, socket, Bant, getPiSamples, getPiOee } from "../services/api";
 
 const W = Dimensions.get("window").width;
 
@@ -70,6 +70,8 @@ export default function AnalizEkrani() {
   const [raporBasarili, setRaporBasarili] = useState(false);
   const [detayModal, setDetayModal] = useState(false);
   const [canliBantlar, setCanliBantlar] = useState<Bant[]>([]);
+  const [piTrendler, setPiTrendler] = useState<any[]>([]);
+  const [piOee, setPiOee] = useState<number>(0);
 
   useEffect(() => {
     const veriCek = async () => {
@@ -83,7 +85,17 @@ export default function AnalizEkrani() {
         setRadarData(rData || []);
         setPerformansData(pData || []);
         setIsiData(iData || { hatlar: [], sutunlar: [], degerler: [] });
-        setCanliBantlar(bVeri.filter(b => b.durum === "acik"));
+        
+        const acikBantlar = bVeri.filter(b => b.durum === "acik");
+        setCanliBantlar(acikBantlar);
+
+        if (acikBantlar.length > 0) {
+          const samples = await getPiSamples(acikBantlar[0].id);
+          setPiTrendler(samples);
+
+          const oeeData = await getPiOee(acikBantlar[0].id);
+          if (oeeData?.oee) setPiOee(oeeData.oee);
+        }
       } catch (err) {
         console.error("Analiz verileri alınamadı:", err);
       } finally {
@@ -121,14 +133,14 @@ export default function AnalizEkrani() {
   };
 
 
-  const buyumeData = partiBuyume.map(d => ({ value: d.r }));
+  const buyumeData = piTrendler.length > 0 ? piTrendler.map(t => ({ value: t.oee || 50 })) : partiBuyume.map(d => ({ value: d.r }));
 
   // CANLI VERİLERDEN HESAPLAMALAR
   const aktifToplamUretim = canliBantlar.reduce((sum, b) => sum + (b.toplamUretim || 0), 0);
   const aktifIyiUretim = canliBantlar.reduce((sum, b) => sum + (b.iyiUretim || 0), 0);
   const aktifHatali = aktifToplamUretim - aktifIyiUretim;
   
-  const gectiPct = aktifToplamUretim > 0 ? (aktifIyiUretim / aktifToplamUretim) * 100 : 98.36;
+  const gectiPct = piOee > 0 ? piOee : (aktifToplamUretim > 0 ? (aktifIyiUretim / aktifToplamUretim) * 100 : 98.36);
   const redPct = aktifToplamUretim > 0 ? (aktifHatali / aktifToplamUretim) * 100 : 0.64;
   const uyariPct = 100 - gectiPct - redPct;
 

@@ -36,16 +36,48 @@ export async function bantVerisiniCek(): Promise<Bant[]> {
   }
 }
 
-export async function dashboardOzetiniCek() {
+export const dashboardOzetiniCek = async () => {
   try {
     const res = await fetch(`${API_URL}/dashboard/ozet`);
-    if (!res.ok) throw new Error("Dashboard özeti çekerken hata oluştu");
     return await res.json();
-  } catch (error) {
-    console.error("Dashboard özeti çekilemedi:", error);
+  } catch (err) {
+    console.error("Dashboard özeti çekilemedi", err);
     return { aktifHatSayisi: 0, toplamCikti: 0, anlikHizOrta: 0 };
   }
-}
+};
+
+// ── RASPBERRY PI REST UÇ NOKTALARI (Proxy Üzerinden) ──
+
+export const getPiEvents = async (bantId: string) => {
+  try {
+    const res = await fetch(`${API_URL}/pi/${bantId}/events`);
+    return await res.json();
+  } catch (err) {
+    console.error("Pi olayları çekilemedi", err);
+    return [];
+  }
+};
+
+export const getPiSamples = async (bantId: string) => {
+  try {
+    const res = await fetch(`${API_URL}/pi/${bantId}/samples`);
+    return await res.json();
+  } catch (err) {
+    console.error("Pi trend verisi çekilemedi", err);
+    return [];
+  }
+};
+
+export const getPiOee = async (bantId: string) => {
+  try {
+    const res = await fetch(`${API_URL}/pi/${bantId}/oee`);
+    return await res.json();
+  } catch (err) {
+    console.error("Pi OEE verisi çekilemedi", err);
+    return { oee: 0 };
+  }
+};
+
 
 // ── Grafik verisi ────────────────────────────────────────────────────────────
 // NOT: Analiz ekranlarındaki detaylı grafiklerin verileri de API'den gelecek şekilde ayarlandı.

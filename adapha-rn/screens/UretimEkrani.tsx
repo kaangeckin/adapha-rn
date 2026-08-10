@@ -7,23 +7,17 @@ import { Plus, ChevronRight, Settings2, Download, CheckCircle, X } from "lucide-
 import { C } from "../constants/colors";
 import { Card, SH } from "../components/Card";
 import ModalBottomSheet from "../components/ModalBottomSheet";
-import { hizProfili, bantVerisiniCek, socket, Bant } from "../services/api";
+import { hizProfili, bantVerisiniCek, socket, Bant, getPiEvents, getPiSamples } from "../services/api";
 
 const W = Dimensions.get("window").width;
 
-// Parti detayları
-const TUM_PARTILER = [
-  { tarih: "12 Ağu 09:00", sure: "3 saat", birim: "Birim: 100", baslik: "Sabah Üretim Çalışması",   rozet: "Hat-01", durum: "Tamamlandı",   tip: "Tip-M", verim: "%98,4", hata: "2 birim" },
-  { tarih: "12 Ağu 11:00", sure: "3 saat", birim: "Birim: 100", baslik: "Öğleden Sonra Çalışma",   rozet: "Hat-02", durum: "Devam Ediyor", tip: "Tip-A", verim: "%96,1", hata: "4 birim" },
-  { tarih: "11 Ağu 09:00", sure: "4 saat", birim: "Birim: 120", baslik: "Gece Çalışması",           rozet: "Hat-03", durum: "Tamamlandı",   tip: "Tip-B", verim: "%99,1", hata: "1 birim" },
-  { tarih: "11 Ağu 14:00", sure: "2 saat", birim: "Birim: 80",  baslik: "Özel Sipariş Çalışması",  rozet: "Hat-01", durum: "Tamamlandı",   tip: "Tip-M", verim: "%97,5", hata: "2 birim" },
-];
+// Pi'den gelecek verilerle doldurulacak, artık sahte liste yok.
 
 export default function UretimEkrani() {
   const [aktifFiltre, setAktifFiltre] = useState("Tümü");
   const [yeniCalismaModal, setYeniCalismaModal] = useState(false);
   const [detayModal, setDetayModal] = useState(false);
-  const [seciliParti, setSeciliParti] = useState<typeof TUM_PARTILER[0] | null>(null);
+  const [seciliParti, setSeciliParti] = useState<any>(null);
   const [raporYukleniyor, setRaporYukleniyor] = useState(false);
   const [raporBasarili, setRaporBasarili] = useState(false);
   const [secilenHat, setSecilenHat] = useState("Hat-01");
@@ -32,12 +26,25 @@ export default function UretimEkrani() {
 
   // Canlı veriler
   const [canliBantlar, setCanliBantlar] = useState<Bant[]>([]);
+  const [piOlaylar, setPiOlaylar] = useState<any[]>([]);
+  const [piTrendler, setPiTrendler] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const veriCek = async () => {
       const bVeri = await bantVerisiniCek();
-      setCanliBantlar(bVeri.filter(b => b.durum === "acik"));
+      const acikBantlar = bVeri.filter(b => b.durum === "acik");
+      setCanliBantlar(acikBantlar);
+      
+      // İlk açık bant için olay ve trend geçmişini çekelim (şuanlık B1)
+      if (acikBantlar.length > 0) {
+        const events = await getPiEvents(acikBantlar[0].id);
+        setPiOlaylar(events);
+
+        const samples = await getPiSamples(acikBantlar[0].id);
+        setPiTrendler(samples);
+      }
+
       setLoading(false);
     };
     veriCek();
@@ -70,8 +77,8 @@ export default function UretimEkrani() {
 
   const aktifPartiSayisi = canliBantlar.length;
 
-  const lineData1 = hizProfili.map(d => ({ value: d.hiz }));
-  const lineData2 = hizProfili.map(d => ({ value: d.miktar }));
+  const lineData1 = piTrendler.length > 0 ? piTrendler.map(t => ({ value: t.hiz })) : hizProfili.map(d => ({ value: d.hiz }));
+  const lineData2 = piTrendler.length > 0 ? piTrendler.map(t => ({ value: t.miktar })) : hizProfili.map(d => ({ value: d.miktar }));
 
   const kaliteDagilim = [
     { label: "Geçti",      val: `%${gectiPct.toFixed(2)}`, pct: gectiPct, color: C.mint  },
@@ -80,8 +87,8 @@ export default function UretimEkrani() {
   ];
 
   const filtreliPartiler = aktifFiltre === "Tümü"
-    ? TUM_PARTILER
-    : TUM_PARTILER.filter(p => p.tip === aktifFiltre);
+    ? piOlaylar
+    : piOlaylar.filter(p => p.tip === aktifFiltre);
 
   // Rapor İndir simülasyonu
   const raporIndir = () => {
@@ -254,34 +261,39 @@ export default function UretimEkrani() {
       </ScrollView>
 
       {/* Parti kartları */}
-      {filtreliPartiler.map((b, i) => (
-        <View key={i} style={s.partiCard}>
-          <View style={[s.partiTop, { backgroundColor: C.peachLt }]}>
-            <Text style={s.partiMeta}>{b.tarih}</Text>
-            <Text style={s.partiMeta}>{b.sure}</Text>
-            <Text style={s.partiMeta}>{b.birim}</Text>
-          </View>
-          <View style={s.partiBottom}>
-            <View>
-              <Text style={s.partiTitle}>{b.baslik}</Text>
-              <View style={{ flexDirection: "row", gap: 6, marginTop: 4 }}>
-                <View style={[s.partiTag, { backgroundColor: C.blueLt }]}>
-                  <Text style={[s.partiTagText, { color: C.blue }]}>{b.rozet}</Text>
-                </View>
-                <View style={[s.partiTag, { backgroundColor: b.durum === "Tamamlandı" ? C.mintLt : C.peachLt }]}>
-                  <Text style={[s.partiTagText, { color: b.durum === "Tamamlandı" ? C.mint : C.peach }]}>{b.durum}</Text>
+      {filtreliPartiler.map((b, i) => {
+        // Tarih formatı düzeltmesi
+        const tarihFormat = b.tarih ? new Date(b.tarih).toLocaleDateString("tr-TR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Belirsiz";
+        
+        return (
+          <View key={i} style={s.partiCard}>
+            <View style={[s.partiTop, { backgroundColor: C.peachLt }]}>
+              <Text style={s.partiMeta}>{tarihFormat}</Text>
+              <Text style={s.partiMeta}>{b.sure}</Text>
+              <Text style={s.partiMeta}>{b.birim}</Text>
+            </View>
+            <View style={s.partiBottom}>
+              <View>
+                <Text style={s.partiTitle}>{b.baslik}</Text>
+                <View style={{ flexDirection: "row", gap: 6, marginTop: 4 }}>
+                  <View style={[s.partiTag, { backgroundColor: C.blueLt }]}>
+                    <Text style={[s.partiTagText, { color: C.blue }]}>{b.bantId || "Hat-01"}</Text>
+                  </View>
+                  <View style={[s.partiTag, { backgroundColor: b.durum === "Tamamlandı" ? C.mintLt : C.peachLt }]}>
+                    <Text style={[s.partiTagText, { color: b.durum === "Tamamlandı" ? C.mint : C.peach }]}>{b.durum}</Text>
+                  </View>
                 </View>
               </View>
+              <TouchableOpacity
+                style={[s.detayBtn, { backgroundColor: C.peach }]}
+                onPress={() => { setSeciliParti(b); setDetayModal(true); }}
+              >
+                <Text style={s.detayBtnText}>Detay</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              style={[s.detayBtn, { backgroundColor: C.peach }]}
-              onPress={() => { setSeciliParti(b); setDetayModal(true); }}
-            >
-              <Text style={s.detayBtnText}>Detay</Text>
-            </TouchableOpacity>
           </View>
-        </View>
-      ))}
+        );
+      })}
 
       {filtreliPartiler.length === 0 && (
         <View style={{ alignItems: "center", paddingVertical: 24 }}>

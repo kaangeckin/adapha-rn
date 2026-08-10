@@ -39,6 +39,8 @@ model Bant {
   
   hat             Hat                @relation(fields: [hatId], references: [id])
   uretimKayitlari UretimKaydi[]
+  olaylar         Olay[]
+  trendler        Trend[]
 }
 
 // ── Tablo 3: Üretim Çalışmaları (Partiler) ──────────────────────────────────
@@ -113,4 +115,32 @@ model Bildirim {
   createdAt   DateTime @default(now())
   
   hat         Hat?     @relation(fields: [hatId], references: [id])
+}
+
+// ── Tablo 8: Raspberry Pi Olay Geçmişi (Events) ─────────────────────────────
+model Olay {
+  id          Int      @id @default(autoincrement())
+  bantId      String
+  tarih       DateTime @default(now())
+  sure        String?
+  birim       String?
+  baslik      String?
+  durum       String?
+  tip         String?
+  verim       String?
+  hata        String?
+  
+  bant        Bant     @relation(fields: [bantId], references: [id])
+}
+
+// ── Tablo 9: Raspberry Pi Trend ve OEE (Samples) ────────────────────────────
+model Trend {
+  id          Int      @id @default(autoincrement())
+  bantId      String
+  timestamp   DateTime @default(now())
+  hiz         Float?
+  miktar      Int?
+  oee         Float?
+  
+  bant        Bant     @relation(fields: [bantId], references: [id])
 }
