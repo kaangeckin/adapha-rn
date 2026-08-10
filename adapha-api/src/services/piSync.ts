@@ -4,8 +4,9 @@ import { Server } from "socket.io";
 
 const prisma = new PrismaClient();
 
-// Aktif bağlantıları takip etmek için
+// Aktif bağlantıları ve reconnect deneme sayılarını takip etmek için
 const connections = new Map<string, WebSocket>();
+const reconnectAttempts = new Map<string, number>();
 
 /**
  * Veritabanında kayıtlı olan ve piIpAdresi bulunan bantlar için
@@ -35,7 +36,7 @@ function baglanMakineye(bantId: string, piIp: string, io: Server) {
   // Eğer zaten bağlıysa tekrar bağlanma
   if (connections.has(bantId)) return;
 
-  const url = `ws://${piIp}/live`;
+  const url = `ws://${piIp}:8000/live`;
   console.log(`🔌 [Bant ${bantId}] Makineye bağlanılıyor: ${url}`);
 
   const ws = new WebSocket(url);
@@ -43,26 +44,30 @@ function baglanMakineye(bantId: string, piIp: string, io: Server) {
   ws.on("open", () => {
     console.log(`✅ [Bant ${bantId}] Raspberry Pi'ye başarıyla bağlandı!`);
     connections.set(bantId, ws);
+    reconnectAttempts.set(bantId, 0); // Başarılı bağlantıda sıfırla
   });
 
   ws.on("message", async (data) => {
     try {
       const payload = JSON.parse(data.toString());
       
-      // Fotoğraftaki verilere dayanarak mapping işlemi:
-      // Burada payload'dan gelen gerçek alan adlarını eşleştiriyoruz.
-      // Not: Pi'deki alan adları farklıysa (örn: payload.CurrentModel) buradan güncelleyeceğiz.
+      // API-MOBIL.md şeması
+      // kind: "update", status: "CALISIYOR", total, good, rate, speed
+      if (payload.kind !== "update") return;
+
       const guncellenecekVeri: any = {
         sonGuncelleme: new Date(),
-        durum: "acik" // Veri geldiğine göre açıktır
+        durum: payload.status || "BILINMIYOR"
       };
 
-      if (payload.anlikHiz !== undefined || payload.speed !== undefined) guncellenecekVeri.anlikHiz = payload.anlikHiz || payload.speed;
-      if (payload.mevcutModel || payload.type) guncellenecekVeri.mevcutModel = String(payload.mevcutModel || payload.type);
-      if (payload.toplamUretim || payload.totalQuantity) guncellenecekVeri.toplamUretim = Number(payload.toplamUretim || payload.totalQuantity);
-      if (payload.iyiUretim || payload.goodProducts) guncellenecekVeri.iyiUretim = Number(payload.iyiUretim || payload.goodProducts);
-      if (payload.sertifikaOrani || payload.rate) guncellenecekVeri.sertifikaOrani = Number(payload.sertifikaOrani || payload.rate);
-      if (payload.calismaSuresi || payload.runningTime) guncellenecekVeri.calismaSuresi = Number(payload.calismaSuresi || payload.runningTime);
+      if (payload.speed !== undefined) guncellenecekVeri.anlikHiz = Number(payload.speed);
+      if (payload.total !== undefined) guncellenecekVeri.toplamUretim = Number(payload.total);
+      if (payload.good !== undefined) guncellenecekVeri.iyiUretim = Number(payload.good);
+      if (payload.rate !== undefined) guncellenecekVeri.sertifikaOrani = Number(payload.rate);
+      
+      // status alanını özel tutalım, mevcut modelde "durum" var ama 
+      // "mevcutModel" alanına şimdilik makine id'sini yazabiliriz veya boş bırakabiliriz
+      if (payload.machine_id) guncellenecekVeri.mevcutModel = String(payload.machine_id);
 
       // Veritabanını güncelle
       const guncelBant = await prisma.bant.update({
@@ -79,9 +84,17 @@ function baglanMakineye(bantId: string, piIp: string, io: Server) {
   });
 
   ws.on("close", () => {
-    console.log(`❌ [Bant ${bantId}] Bağlantı koptu. 5 saniye sonra tekrar denenecek...`);
     connections.delete(bantId);
-    setTimeout(() => baglanMakineye(bantId, piIp, io), 5000);
+    
+    let attempts = reconnectAttempts.get(bantId) || 0;
+    // Üstel geri çekilme (1, 2, 4, 8, 16, 30 max)
+    let delay = Math.pow(2, attempts) * 1000;
+    if (delay > 30000) delay = 30000;
+    
+    console.log(`❌ [Bant ${bantId}] Bağlantı koptu. ${delay / 1000} saniye sonra tekrar denenecek...`);
+    
+    reconnectAttempts.set(bantId, attempts + 1);
+    setTimeout(() => baglanMakineye(bantId, piIp, io), delay);
   });
 
   ws.on("error", (err) => {

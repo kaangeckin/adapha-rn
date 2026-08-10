@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 // Axios instance with a timeout so we don't hang if Pi is down
 const createClient = (ip: string) => axios.create({
-  baseURL: `http://${ip}`,
+  baseURL: `http://${ip}:8000`,
   timeout: 5000,
 });
 
@@ -15,24 +15,21 @@ const createClient = (ip: string) => axios.create({
 export async function syncEvents(bantId: string, piIp: string) {
   try {
     const api = createClient(piIp);
-    const res = await api.get(`/machines/${bantId}/events`);
+    const res = await api.get(`/machines/${bantId}/events?hours=24`);
     
-    // Varsayım: res.data bir dizi Olay objesi dönüyor
     const events = Array.isArray(res.data) ? res.data : [];
 
     for (const ev of events) {
-      // Çift kaydı önlemek için basit bir kontrol (Gerçekte benzersiz bir ID olsa daha iyi)
-      // Şimdilik sadece kaydediyoruz
+      // type, start, end, duration_s, meta
       await prisma.olay.create({
         data: {
           bantId,
-          sure: String(ev.sure || ""),
-          birim: String(ev.birim || ""),
-          baslik: String(ev.baslik || ""),
-          durum: String(ev.durum || ""),
-          tip: String(ev.tip || ""),
-          verim: String(ev.verim || ""),
-          hata: String(ev.hata || ""),
+          tarih: ev.start ? new Date(ev.start) : new Date(),
+          sure: ev.duration_s ? `${ev.duration_s} sn` : "Belirsiz",
+          birim: ev.meta?.esik_sn ? `Eşik: ${ev.meta.esik_sn}s` : "",
+          baslik: ev.type || "Bilinmeyen Olay",
+          durum: ev.end ? "Tamamlandı" : "Devam Ediyor",
+          tip: ev.type,
         }
       });
     }
@@ -49,16 +46,20 @@ export async function syncEvents(bantId: string, piIp: string) {
 export async function syncSamples(bantId: string, piIp: string) {
   try {
     const api = createClient(piIp);
-    const res = await api.get(`/machines/${bantId}/samples`);
+    const res = await api.get(`/machines/${bantId}/samples?hours=8&limit=2000`);
     
     const samples = Array.isArray(res.data) ? res.data : [];
 
     for (const s of samples) {
+      if (s.valid === false) continue; // Hatalı verileri atla
+
       await prisma.trend.create({
         data: {
           bantId,
-          hiz: Number(s.hiz || s.speed || 0),
-          miktar: Number(s.miktar || s.quantity || 0),
+          timestamp: s.ts ? new Date(s.ts) : new Date(),
+          hiz: Number(s.speed || 0),
+          miktar: Number(s.total || 0),
+          oee: Number(s.rate || 0),
         }
       });
     }
@@ -77,17 +78,19 @@ export async function syncOee(bantId: string, piIp: string) {
     const api = createClient(piIp);
     const res = await api.get(`/machines/${bantId}/oee`);
     
-    const oeeVal = res.data?.oee || res.data?.value || 0;
+    const oeeData = res.data;
+    const oeeVal = oeeData?.oee ? oeeData.oee * 100 : 0; // 0.886 -> %88.6
     
-    // OEE geldiğinde Trend tablosuna atalım
-    await prisma.trend.create({
-      data: {
-        bantId,
-        oee: Number(oeeVal),
-      }
-    });
+    if (oeeVal > 0) {
+      await prisma.trend.create({
+        data: {
+          bantId,
+          oee: oeeVal,
+        }
+      });
+    }
 
-    return { oee: oeeVal };
+    return oeeData || { oee: 0 };
   } catch (err: any) {
     console.error(`❌ [Bant ${bantId}] OEE çekilemedi:`, err.message);
     return { oee: 0 };
@@ -100,7 +103,7 @@ export async function syncOee(bantId: string, piIp: string) {
 export async function getExportCsv(piIp: string) {
   try {
     const api = createClient(piIp);
-    const res = await api.get("/export.csv", { responseType: 'stream' });
+    const res = await api.get("/export.csv?hours=24", { responseType: 'stream' });
     return res.data;
   } catch (err: any) {
     console.error(`❌ CSV çekilemedi:`, err.message);

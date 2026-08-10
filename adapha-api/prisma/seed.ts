@@ -4,6 +4,8 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log('Veritabanı temizleniyor...');
+  await prisma.olay.deleteMany();
+  await prisma.trend.deleteMany();
   await prisma.bildirim.deleteMany();
   await prisma.performansMetrigi.deleteMany();
   await prisma.kaliteKontrol.deleteMany();
@@ -32,7 +34,7 @@ async function main() {
   for (let i = 1; i <= 8; i++) {
     await prisma.bant.create({
       data: {
-        id: `B${i}`,
+        id: `MAK-0${i}`,
         hatId: `H${i}`,
         isim: `Bant ${i} – Hat ${['A','A','B','B','C','C','D','D'][i-1]}`,
         durum: i <= 2 ? 'acik' : 'kapali',

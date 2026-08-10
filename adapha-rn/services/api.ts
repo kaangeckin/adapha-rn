@@ -1,6 +1,6 @@
 import { io, Socket } from "socket.io-client";
 
-export type BantDurumu = "acik" | "kapali";
+export type BantDurumu = "acik" | "kapali" | "CALISIYOR" | "DURDU" | "SINYAL_YOK" | "BILINMIYOR";
 
 export interface Bant {
   id: string;

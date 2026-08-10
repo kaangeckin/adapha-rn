@@ -61,8 +61,8 @@ export function BantDurumuPaneli() {
     return () => clearInterval(tick);
   }, []);
 
-  const acikSayisi   = bantlar.filter(b => b.durum === "acik").length;
-  const kapaliSayisi = bantlar.filter(b => b.durum === "kapali").length;
+  const acikSayisi   = bantlar.filter(b => b.durum === "CALISIYOR" || b.durum === "acik").length;
+  const kapaliSayisi = bantlar.length - acikSayisi;
   const pct          = bantlar.length ? (acikSayisi / bantlar.length) * 100 : 0;
 
   return (
@@ -145,7 +145,12 @@ export function BantDurumuPaneli() {
 
 // ── Tek bant satırı ──────────────────────────────────────────────────────────
 function BantSatiri({ bant, onPress }: { bant: Bant; onPress: () => void }) {
-  const acik = bant.durum === "acik";
+  // 60 saniye gecikme kontrolü
+  const isStale = bant.sonGuncelleme ? (new Date().getTime() - new Date(bant.sonGuncelleme).getTime()) > 60000 : false;
+  const gercekDurum = isStale ? "SINYAL_YOK" : (bant.durum || "BILINMIYOR");
+  
+  const acik = gercekDurum === "CALISIYOR" || gercekDurum === "acik";
+  const durdu = gercekDurum === "DURDU" || gercekDurum === "kapali";
   const pingAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -157,15 +162,27 @@ function BantSatiri({ bant, onPress }: { bant: Bant; onPress: () => void }) {
         ])
       ).start();
     }
-  }, [acik]);
+  }, [acik, pingAnim]);
 
   const pingOpacity = pingAnim.interpolate({ inputRange: [1, 1.5, 2], outputRange: [0.25, 0.1, 0] });
+
+  let bgColor = C.grayLt;
+  let borderColor = C.gray;
+  let dotColor = C.gray;
+  let textColor = C.gray;
+  let statusLabel = "Sinyal Yok";
+
+  if (acik) {
+    bgColor = C.greenLt; borderColor = "#BBF7D0"; dotColor = C.green; textColor = C.green; statusLabel = "ÇALIŞIYOR";
+  } else if (durdu) {
+    bgColor = C.redMd; borderColor = C.redBrd; dotColor = C.red; textColor = C.red; statusLabel = "DURDU";
+  }
 
   return (
     <TouchableOpacity
       style={[styles.bantRow, {
-        backgroundColor: acik ? C.greenLt : C.redMd,
-        borderColor: acik ? "#BBF7D0" : C.redBrd,
+        backgroundColor: bgColor,
+        borderColor: borderColor,
       }]}
       onPress={onPress}
       activeOpacity={0.8}
@@ -174,22 +191,22 @@ function BantSatiri({ bant, onPress }: { bant: Bant; onPress: () => void }) {
       <View style={styles.bantLeft}>
         <View style={styles.dotBox}>
           {acik && (
-            <Animated.View style={[styles.pingRing, { borderColor: C.green, transform: [{ scale: pingAnim }], opacity: pingOpacity }]} />
+            <Animated.View style={[styles.pingRing, { borderColor: dotColor, transform: [{ scale: pingAnim }], opacity: pingOpacity }]} />
           )}
-          <View style={[styles.statusDot, { backgroundColor: acik ? C.green : C.red }]} />
+          <View style={[styles.statusDot, { backgroundColor: dotColor }]} />
         </View>
         <View>
           <Text style={styles.bantIsmi}>{bant.isim}</Text>
-          <Text style={[styles.bantHiz, { color: acik ? C.green : C.red }]}>
-            {acik ? `${bant.hiz} birim/dak` : "Durduruldu"}
+          <Text style={[styles.bantHiz, { color: textColor }]}>
+            {acik ? `${bant.anlikHiz || bant.hiz || 0} birim/dak` : (durdu ? "Durduruldu" : "Sinyal Bekleniyor")}
           </Text>
         </View>
       </View>
 
       {/* Durum + ok */}
       <View style={styles.bantRight}>
-        <View style={[styles.statusBadge, { backgroundColor: acik ? C.green : C.red }]}>
-          <Text style={styles.statusText}>{acik ? "AÇIK" : "KAPALI"}</Text>
+        <View style={[styles.statusBadge, { backgroundColor: dotColor }]}>
+          <Text style={styles.statusText}>{statusLabel}</Text>
         </View>
         <Text style={styles.arrow}>▶</Text>
       </View>

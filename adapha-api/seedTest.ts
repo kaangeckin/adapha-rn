@@ -6,7 +6,7 @@ async function main() {
   console.log("Test olayları ve trend verileri ekleniyor...");
   
   // Bant 1 (H1) için veriler ekleyelim
-  const bantId = "B1";
+  const bantId = "MAK-01";
 
   // Olaylar (Events)
   await prisma.olay.createMany({
