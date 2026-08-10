@@ -7,7 +7,7 @@ import { Plus, ChevronRight, Settings2, Download, CheckCircle, X } from "lucide-
 import { C } from "../constants/colors";
 import { Card, SH } from "../components/Card";
 import ModalBottomSheet from "../components/ModalBottomSheet";
-import { hizProfili } from "../services/api";
+import { hizProfili, bantVerisiniCek, socket, Bant } from "../services/api";
 
 const W = Dimensions.get("window").width;
 
@@ -30,13 +30,53 @@ export default function UretimEkrani() {
   const [secilenTip, setSecilenTip] = useState("Tip-M");
   const [calismaOlusturuldu, setCalismaOlusturuldu] = useState(false);
 
+  // Canlı veriler
+  const [canliBantlar, setCanliBantlar] = useState<Bant[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const veriCek = async () => {
+      const bVeri = await bantVerisiniCek();
+      setCanliBantlar(bVeri.filter(b => b.durum === "acik"));
+      setLoading(false);
+    };
+    veriCek();
+
+    socket.on("bant_guncellendi", (guncelBant: Bant) => {
+      setCanliBantlar(prev => {
+        const kopya = [...prev];
+        const idx = kopya.findIndex(b => b.id === guncelBant.id);
+        if (idx !== -1) {
+          kopya[idx] = { ...kopya[idx], ...guncelBant };
+        } else if (guncelBant.durum === "acik") {
+          kopya.push(guncelBant);
+        }
+        return kopya;
+      });
+    });
+
+    return () => {
+      socket.off("bant_guncellendi");
+    };
+  }, []);
+
+  const aktifToplamUretim = canliBantlar.reduce((sum, b) => sum + (b.toplamUretim || 0), 0);
+  const aktifIyiUretim = canliBantlar.reduce((sum, b) => sum + (b.iyiUretim || 0), 0);
+  const aktifHatali = aktifToplamUretim - aktifIyiUretim;
+  
+  const gectiPct = aktifToplamUretim > 0 ? (aktifIyiUretim / aktifToplamUretim) * 100 : 98.36;
+  const redPct = aktifToplamUretim > 0 ? (aktifHatali / aktifToplamUretim) * 100 : 0.64;
+  const uyariPct = 100 - gectiPct - redPct; // Geri kalan (simülasyon)
+
+  const aktifPartiSayisi = canliBantlar.length;
+
   const lineData1 = hizProfili.map(d => ({ value: d.hiz }));
   const lineData2 = hizProfili.map(d => ({ value: d.miktar }));
 
   const kaliteDagilim = [
-    { label: "Geçti",      val: "%98,36", pct: 98.36, color: C.mint  },
-    { label: "Uyarı",      val: "%1,0",   pct: 1.0,   color: C.sand  },
-    { label: "Reddedildi", val: "%0,64",  pct: 0.64,  color: C.peach },
+    { label: "Geçti",      val: `%${gectiPct.toFixed(2)}`, pct: gectiPct, color: C.mint  },
+    { label: "Uyarı",      val: `%${Math.max(0, uyariPct).toFixed(2)}`,   pct: Math.max(0, uyariPct),   color: C.sand  },
+    { label: "Reddedildi", val: `%${redPct.toFixed(2)}`,  pct: redPct,  color: C.peach },
   ];
 
   const filtreliPartiler = aktifFiltre === "Tümü"
@@ -99,7 +139,7 @@ export default function UretimEkrani() {
               <Text style={s.miniTagText}>+%3,2</Text>
             </View>
           </View>
-          <Text style={s.statNum}>37</Text>
+          <Text style={s.statNum}>{aktifPartiSayisi > 0 ? aktifPartiSayisi : 37}</Text>
         </View>
         <View style={[s.stat, { backgroundColor: C.mintLt }]}>
           <View style={s.statTopRow}>
@@ -108,7 +148,7 @@ export default function UretimEkrani() {
               <Text style={s.miniTagText}>+%1,2</Text>
             </View>
           </View>
-          <Text style={s.statNum}>43.624</Text>
+          <Text style={s.statNum}>{aktifToplamUretim > 0 ? aktifToplamUretim.toLocaleString("tr-TR") : "43.624"}</Text>
         </View>
       </View>
 

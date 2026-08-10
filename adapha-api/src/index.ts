@@ -8,6 +8,7 @@ import bantlarRouter from "./routes/bantlar";
 import dashboardRouter from "./routes/dashboard";
 import uretimRouter from "./routes/uretim";
 import analitikRouter from "./routes/analitik";
+import { baslatPiSync } from "./services/piSync";
 
 const app = express();
 const httpServer = createServer(app);
@@ -37,24 +38,51 @@ setInterval(async () => {
     const guncellemeler = [];
 
     for (const bant of acikBantlar) {
+      // SADECE Pİ İP'Sİ OLMAYAN (Sanal) bantlarda simülasyon çalışsın
+      if (bant.piIpAdresi) continue;
+
       // Mevcut hız üzerinden -1 ile +1 arasında rastgele bir değişim yapalım
       let yeniHiz = (bant.anlikHiz || 0) + (Math.random() * 2 - 1);
       if (yeniHiz < 0) yeniHiz = 0; // Hız negatif olamaz
+      if (yeniHiz === 0 && Math.random() > 0.5) yeniHiz = 150; // Sıfırsa ara sıra uyandır (test için)
       
       yeniHiz = Number(yeniHiz.toFixed(1)); // Tek ondalık basamak
 
+      // Test için üretim adetlerini de canlı olarak artıralım
+      const yeniToplam = (bant.toplamUretim || 43620) + Math.floor(Math.random() * 3);
+      const yeniIyi = (bant.iyiUretim || 42900) + (Math.random() > 0.1 ? 2 : 1); // Çoğunlukla iyi artsın
+      const yeniOran = Number(((yeniIyi / yeniToplam) * 100).toFixed(2));
+
       await prisma.bant.update({
         where: { id: bant.id },
-        data: { anlikHiz: yeniHiz, sonGuncelleme: new Date() }
+        data: { 
+          anlikHiz: yeniHiz, 
+          toplamUretim: yeniToplam,
+          iyiUretim: yeniIyi,
+          sertifikaOrani: yeniOran,
+          mevcutModel: "Tip-M",
+          sonGuncelleme: new Date() 
+        }
       });
 
+      // bant_hiz_guncelleme (eski sistem) ile hızı gönder
       guncellemeler.push({
         id: bant.id,
         anlikHiz: yeniHiz
       });
+
+      // Yeni sisteme (piSync formatı) göre tüm bandı göndererek Ana Ekran'daki adetleri de güncelleyelim
+      io.emit("bant_guncellendi", {
+        ...bant,
+        anlikHiz: yeniHiz,
+        toplamUretim: yeniToplam,
+        iyiUretim: yeniIyi,
+        sertifikaOrani: yeniOran,
+        mevcutModel: "Tip-M",
+        durum: "acik"
+      });
     }
 
-    // Mobil uygulamalara güncellenen hızları tek bir paket halinde yayınlıyoruz!
     if (guncellemeler.length > 0) {
       io.emit("bant_hiz_guncelleme", guncellemeler);
     }
@@ -92,4 +120,7 @@ app.get("/", (_req, res) => {
 httpServer.listen(PORT, () => {
   console.log(`\n🚀 Adapha API çalışıyor: http://localhost:${PORT}`);
   console.log(`📡 WebSocket dinleniyor...`);
+  
+  // Raspberry Pi Sync servisini başlat
+  baslatPiSync(io);
 });

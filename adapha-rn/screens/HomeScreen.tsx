@@ -74,7 +74,7 @@ export default function HomeScreen() {
 
     verileriCek();
 
-    // 2. WebSocket üzerinden anlık hız güncellemelerini dinle
+    // 2. WebSocket üzerinden anlık hız güncellemelerini (Simülatör) dinle
     socket.on("bant_hiz_guncelleme", (guncellemeler: { id: string, anlikHiz: number }[]) => {
       setCanliBantlar(prev => {
         let hizToplami = 0;
@@ -94,15 +94,39 @@ export default function HomeScreen() {
       });
     });
 
+    // 3. Gerçek Raspberry Pi'den gelen full güncellemeleri dinle
+    socket.on("bant_guncellendi", (guncelBant: Bant) => {
+      setCanliBantlar(prev => {
+        const kopya = [...prev];
+        const idx = kopya.findIndex(b => b.id === guncelBant.id);
+        if (idx !== -1) {
+          kopya[idx] = { ...kopya[idx], ...guncelBant };
+        } else if (guncelBant.durum === "acik") {
+          kopya.push(guncelBant);
+        }
+        return kopya;
+      });
+    });
+
     return () => {
       socket.off("bant_hiz_guncelleme");
+      socket.off("bant_guncellendi");
     };
   }, []);
 
-  // Grafik verisi
-  const lineData1 = hizProfili.map(d => ({ value: d.hiz }));
+  // Grafik verisi (Zamanla API'ye bağlanacak)
   const lineData2 = aylikUretim.map(d => ({ value: d.cikti }));
   const lineData3 = aylikUretim.map(d => ({ value: d.iyi }));
+
+  // CANLI VERİLERDEN HESAPLANAN ÖZETLER
+  const aktifToplamUretim = canliBantlar.reduce((sum, b) => sum + (b.toplamUretim || 0), 0) || ozet.toplamCikti;
+  const aktifIyiUretim = canliBantlar.reduce((sum, b) => sum + (b.iyiUretim || 0), 0);
+  const ortalamaSertifika = canliBantlar.filter(b => b.sertifikaOrani).length > 0
+    ? canliBantlar.reduce((sum, b) => sum + (b.sertifikaOrani || 0), 0) / canliBantlar.filter(b => b.sertifikaOrani).length
+    : 0;
+  
+  const hataliUretim = aktifToplamUretim > 0 ? (aktifToplamUretim - aktifIyiUretim) : 0;
+  const hataOrani = aktifToplamUretim > 0 ? (hataliUretim / aktifToplamUretim * 100) : 0;
 
   if (loading) {
     return <View style={[s.scroll, { justifyContent: "center", alignItems: "center" }]}><ActivityIndicator color={C.peach} /></View>;
@@ -148,7 +172,7 @@ export default function HomeScreen() {
             <Package size={11} color={C.blue} />
             <Text style={s.statLabel}>Toplam Çıktı</Text>
           </View>
-          <Text style={[s.statNum, { color: C.text }]}>{ozet.toplamCikti.toLocaleString("tr-TR")}</Text>
+          <Text style={[s.statNum, { color: C.text }]}>{aktifToplamUretim.toLocaleString("tr-TR")}</Text>
           <Text style={[s.statSub, { color: C.blue }]}>+2,1% ↑</Text>
         </View>
       </View>
@@ -190,11 +214,11 @@ export default function HomeScreen() {
         <SH title="Makine Performansı" action="Detaylar" />
         <View style={s.perfRow}>
           <Text style={s.perfLabel}>En Yaygın Hata</Text>
-          <Text style={s.perfVal}>Yüzey Çizimi · 03</Text>
+          <Text style={s.perfVal}>Yüzey Çizimi (Bekleniyor)</Text>
         </View>
         <View style={s.perfRow}>
           <Text style={s.perfLabel}>Hata Oranı</Text>
-          <Text style={[s.perfVal, { color: C.peach }]}>%1,64  +0,1% ↑</Text>
+          <Text style={[s.perfVal, { color: C.peach }]}>%{hataOrani.toFixed(2)}</Text>
         </View>
       </Card>
 
@@ -208,11 +232,11 @@ export default function HomeScreen() {
               </View>
               <Text style={[s.perfVal, { color: C.text }]}>Kalite Kontrol Aktif</Text>
             </View>
-            <Text style={s.perfLabel}>İnceleme Bekleyen Birimler</Text>
-            <Text style={[s.statNum, { color: C.peach, marginTop: 4 }]}>715 birim</Text>
+            <Text style={s.perfLabel}>İnceleme Bekleyen (Hatalı) Birimler</Text>
+            <Text style={[s.statNum, { color: C.peach, marginTop: 4 }]}>{hataliUretim} birim</Text>
           </View>
           <View style={[s.badge, { backgroundColor: C.peachLt }]}>
-            <Text style={[s.badgeText, { color: C.peach }]}>%1,64</Text>
+            <Text style={[s.badgeText, { color: C.peach }]}>%{hataOrani.toFixed(2)}</Text>
           </View>
         </View>
       </Card>
@@ -225,7 +249,7 @@ export default function HomeScreen() {
             <Text style={[s.badgeText, { color: C.peach }]}>Aylık</Text>
           </View>
         </View>
-        <Text style={[s.perfLabel, { marginBottom: 12 }]}>Ort. Oran: <Text style={[s.perfVal, { color: C.text }]}>%98,36</Text></Text>
+        <Text style={[s.perfLabel, { marginBottom: 12 }]}>Sertifika Oranı (Canlı): <Text style={[s.perfVal, { color: C.text }]}>%{ortalamaSertifika.toFixed(2)}</Text></Text>
         <View style={{ flexDirection: "row", gap: 16, marginBottom: 8 }}>
           {[{ c: C.blue, l: "Çıktı" }, { c: C.mint, l: "İyi" }].map(({ c, l }) => (
             <View key={l} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -267,8 +291,8 @@ export default function HomeScreen() {
       <Card>
         <SH title="Üretim Özeti" action="Detaylar" />
         {[
-          { dot: C.mint, label: "İyi Ürünler", val: "%98,36  ·  42.909" },
-          { dot: C.peachMd, label: "Hatalı", val: "%1,64   ·  715" },
+          { dot: C.mint, label: "İyi Ürünler", val: `%${ortalamaSertifika.toFixed(2)}  ·  ${aktifIyiUretim.toLocaleString("tr-TR")}` },
+          { dot: C.peachMd, label: "Hatalı / Fire", val: `%${hataOrani.toFixed(2)}   ·  ${hataliUretim.toLocaleString("tr-TR")}` },
         ].map(r => (
           <View key={r.label} style={s.summaryRow}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -280,9 +304,8 @@ export default function HomeScreen() {
         ))}
         <View style={s.divider} />
         {[
-          { label: "En İyi Sonuç", pct: "%98,36", adet: "42.909 birim", color: C.mint },
-          { label: "Ortalama Sonuç", pct: "%96,0", adet: "41.879 birim", color: C.blue },
-          { label: "Standart Altı", pct: "%1,64", adet: "715 birim", color: C.peach },
+          { label: "Sertifikalı Üretim", pct: `%${ortalamaSertifika.toFixed(2)}`, adet: `${aktifIyiUretim.toLocaleString("tr-TR")} birim`, color: C.mint },
+          { label: "Standart Altı", pct: `%${hataOrani.toFixed(2)}`, adet: `${hataliUretim.toLocaleString("tr-TR")} birim`, color: C.peach },
         ].map(row => (
           <View key={row.label} style={s.summaryRow}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>

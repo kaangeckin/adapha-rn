@@ -7,7 +7,7 @@ import { Download, ChevronRight, Zap, Award, Calendar, CheckCircle } from "lucid
 import { C } from "../constants/colors";
 import { Card, SH } from "../components/Card";
 import ModalBottomSheet from "../components/ModalBottomSheet";
-import { partiBuyume, radarVerisiniCek, performansTablosunuCek, isiHaritasiniCek } from "../services/api";
+import { partiBuyume, radarVerisiniCek, performansTablosunuCek, isiHaritasiniCek, bantVerisiniCek, socket, Bant } from "../services/api";
 
 const W = Dimensions.get("window").width;
 
@@ -69,18 +69,21 @@ export default function AnalizEkrani() {
   const [raporYukleniyor, setRaporYukleniyor] = useState(false);
   const [raporBasarili, setRaporBasarili] = useState(false);
   const [detayModal, setDetayModal] = useState(false);
+  const [canliBantlar, setCanliBantlar] = useState<Bant[]>([]);
 
   useEffect(() => {
     const veriCek = async () => {
       try {
-        const [rData, pData, iData] = await Promise.all([
+        const [rData, pData, iData, bVeri] = await Promise.all([
           radarVerisiniCek(),
           performansTablosunuCek(),
-          isiHaritasiniCek()
+          isiHaritasiniCek(),
+          bantVerisiniCek()
         ]);
         setRadarData(rData || []);
         setPerformansData(pData || []);
         setIsiData(iData || { hatlar: [], sutunlar: [], degerler: [] });
+        setCanliBantlar(bVeri.filter(b => b.durum === "acik"));
       } catch (err) {
         console.error("Analiz verileri alınamadı:", err);
       } finally {
@@ -88,6 +91,23 @@ export default function AnalizEkrani() {
       }
     };
     veriCek();
+
+    socket.on("bant_guncellendi", (guncelBant: Bant) => {
+      setCanliBantlar(prev => {
+        const kopya = [...prev];
+        const idx = kopya.findIndex(b => b.id === guncelBant.id);
+        if (idx !== -1) {
+          kopya[idx] = { ...kopya[idx], ...guncelBant };
+        } else if (guncelBant.durum === "acik") {
+          kopya.push(guncelBant);
+        }
+        return kopya;
+      });
+    });
+
+    return () => {
+      socket.off("bant_guncellendi");
+    };
   }, []);
 
   const raporIndir = () => {
@@ -103,10 +123,19 @@ export default function AnalizEkrani() {
 
   const buyumeData = partiBuyume.map(d => ({ value: d.r }));
 
+  // CANLI VERİLERDEN HESAPLAMALAR
+  const aktifToplamUretim = canliBantlar.reduce((sum, b) => sum + (b.toplamUretim || 0), 0);
+  const aktifIyiUretim = canliBantlar.reduce((sum, b) => sum + (b.iyiUretim || 0), 0);
+  const aktifHatali = aktifToplamUretim - aktifIyiUretim;
+  
+  const gectiPct = aktifToplamUretim > 0 ? (aktifIyiUretim / aktifToplamUretim) * 100 : 98.36;
+  const redPct = aktifToplamUretim > 0 ? (aktifHatali / aktifToplamUretim) * 100 : 0.64;
+  const uyariPct = 100 - gectiPct - redPct;
+
   const kaliteSeviyeler = [
-    { label: "Sertifikalı",        pct: 85, color: C.mint,  text: "%85" },
-    { label: "Kabul Edilebilir",   pct: 13, color: C.blue,  text: "%13" },
-    { label: "Hatalı",             pct: 2,  color: C.peach, text: "%2"  },
+    { label: "Sertifikalı",        pct: gectiPct, color: C.mint,  text: `%${gectiPct.toFixed(2)}` },
+    { label: "Kabul Edilebilir",   pct: Math.max(0, uyariPct), color: C.blue,  text: `%${Math.max(0, uyariPct).toFixed(2)}` },
+    { label: "Hatalı",             pct: redPct,  color: C.peach, text: `%${redPct.toFixed(2)}`  },
   ];
 
   if (loading) {
@@ -150,12 +179,12 @@ export default function AnalizEkrani() {
       <View style={{ flexDirection: "row", gap: 12 }}>
         <View style={[s.stat, { backgroundColor: C.peachLt }]}>
           <Text style={s.statLabel}>Sertifika Oranı</Text>
-          <Text style={[s.statNum, { color: C.text }]}>%98,36</Text>
+          <Text style={[s.statNum, { color: C.text }]}>%{gectiPct.toFixed(2)}</Text>
           <Text style={[s.statSub, { color: C.mint }]}>+%0,3 ↑</Text>
         </View>
         <View style={[s.stat, { backgroundColor: C.mintLt }]}>
           <Text style={s.statLabel}>İyi Ürünler</Text>
-          <Text style={[s.statNum, { color: C.text }]}>42.909</Text>
+          <Text style={[s.statNum, { color: C.text }]}>{aktifIyiUretim > 0 ? aktifIyiUretim.toLocaleString("tr-TR") : "42.909"}</Text>
           <Text style={[s.statSub, { color: C.mint }]}>+%1,0 ↑</Text>
         </View>
       </View>
@@ -185,8 +214,8 @@ export default function AnalizEkrani() {
         ))}
         <View style={[s.grid3, { borderTopWidth: 1, borderTopColor: C.border, paddingTop: 12, marginTop: 4 }]}>
           {[
-            { label: "Sertifikalı", sub: "42.909 birim",            color: C.mint  },
-            { label: "İncelendi",   sub: "5.615 birim doğru",       color: C.blue  },
+            { label: "Sertifikalı", sub: `${aktifIyiUretim > 0 ? aktifIyiUretim.toLocaleString("tr-TR") : "42.909"} birim`, color: C.mint  },
+            { label: "İncelendi",   sub: `${Math.floor((aktifIyiUretim > 0 ? aktifIyiUretim : 42909) * 0.15).toLocaleString("tr-TR")} birim doğru`, color: C.blue  },
             { label: "Aksiyon",     sub: "Bu hafta 2 denetim ekle", color: C.peach },
           ].map(r => (
             <View key={r.label} style={[s.miniCard, { backgroundColor: `${r.color}18` }]}>
@@ -204,15 +233,15 @@ export default function AnalizEkrani() {
           <Text style={{ fontSize: 10, fontWeight: "700", color: C.mint }}>+%8,7 ↑</Text>
         </View>
         <Text style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>
-          Toplam Çalışma: <Text style={{ fontWeight: "700", color: C.text }}>3.212</Text>
+          Toplam Çalışma: <Text style={{ fontWeight: "700", color: C.text }}>{aktifToplamUretim > 0 ? aktifToplamUretim.toLocaleString("tr-TR") : "3.212"}</Text>
         </Text>
         <View style={{ height: 8, borderRadius: 99, backgroundColor: "#D8E6F0", overflow: "hidden", marginBottom: 12 }}>
-          <View style={{ height: "100%", width: "78%", backgroundColor: C.peach, borderRadius: 99 }} />
+          <View style={{ height: "100%", width: `${gectiPct}%`, backgroundColor: C.peach, borderRadius: 99 }} />
         </View>
         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
           {[
-            { dot: C.mint, label: "Planlanmış Çalışma", val: "521" },
-            { dot: C.lav,  label: "Öncelikli",          val: "79"  },
+            { dot: C.mint, label: "İyi Çıktı", val: `${aktifIyiUretim > 0 ? aktifIyiUretim.toLocaleString("tr-TR") : "521"}` },
+            { dot: C.lav,  label: "Hatalı",    val: `${aktifHatali > 0 ? aktifHatali.toLocaleString("tr-TR") : "79"}`  },
           ].map(r => (
             <View key={r.label} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: r.dot }} />

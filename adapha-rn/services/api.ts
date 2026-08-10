@@ -10,6 +10,11 @@ export interface Bant {
   sonGuncelleme?: string;
   kameraUrl?: string;
   hatId?: string;
+  mevcutModel?: string;
+  toplamUretim?: number;
+  iyiUretim?: number;
+  sertifikaOrani?: number;
+  calismaSuresi?: number;
 }
 
 // ── Sunucu IP Adresi (Uygulamanın çalıştığı ağdaki bilgisayarın IP'si) ──
