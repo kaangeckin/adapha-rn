@@ -17,9 +17,10 @@ const Tab = createBottomTabNavigator();
 
 function AppHeader() {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 10 }]}>
       <View style={styles.headerLeft}>
         <TouchableOpacity style={styles.menuBtn} onPress={() => navigation.navigate("Admin")}>
           <AlignLeft size={16} color={C.peach} />
@@ -90,7 +91,6 @@ const styles = StyleSheet.create({
     backgroundColor: C.card,
     borderBottomWidth: 1,
     borderBottomColor: C.border,
-    paddingTop: Platform.OS === "android" ? 40 : 12,
   },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   headerRight: { flexDirection: "row", gap: 8 },

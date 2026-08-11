@@ -2,12 +2,14 @@ import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert } from "react-native";
 import { Lock, Server, Save, ChevronLeft, Wifi, WifiOff } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { C } from "../constants/colors";
 
 const API_URL = "http://192.168.1.187:3000/api";
 
 export default function AdminEkrani() {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const [sifre, setSifre] = useState("");
   const [girisYapildi, setGirisYapildi] = useState(false);
   const [bantlar, setBantlar] = useState<any[]>([]);
@@ -57,8 +59,8 @@ export default function AdminEkrani() {
 
   if (!girisYapildi) {
     return (
-      <View style={s.loginContainer}>
-        <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
+      <View style={[s.loginContainer, { paddingTop: insets.top }]}>
+        <TouchableOpacity style={[s.backBtn, { top: Math.max(insets.top, 20) + 10 }]} onPress={() => navigation.goBack()}>
           <ChevronLeft size={24} color={C.text} />
         </TouchableOpacity>
         <View style={s.loginBox}>
@@ -91,7 +93,7 @@ export default function AdminEkrani() {
 
   return (
     <View style={s.container}>
-      <View style={s.header}>
+      <View style={[s.header, { paddingTop: Math.max(insets.top, 20) + 10 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
           <ChevronLeft size={24} color={C.text} />
         </TouchableOpacity>
@@ -153,7 +155,7 @@ const s = StyleSheet.create({
   loginBtnText: { color: "white", fontSize: 16, fontWeight: "700" },
 
   container: { flex: 1, backgroundColor: C.bg },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingTop: 60, paddingBottom: 16, backgroundColor: "white", borderBottomWidth: 1, borderBottomColor: C.border },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingBottom: 16, backgroundColor: "white", borderBottomWidth: 1, borderBottomColor: C.border },
   headerTitle: { fontSize: 18, fontWeight: "700", color: C.text },
   content: { padding: 16, gap: 16 },
   card: { backgroundColor: "white", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: C.border },
