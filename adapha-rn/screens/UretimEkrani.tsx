@@ -8,6 +8,8 @@ import { C } from "../constants/colors";
 import { Card, SH } from "../components/Card";
 import ModalBottomSheet from "../components/ModalBottomSheet";
 import { hizProfili, bantVerisiniCek, socket, Bant, getPiEvents, getPiSamples } from "../services/api";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 
 const W = Dimensions.get("window").width;
 
@@ -31,7 +33,7 @@ export default function UretimEkrani() {
       const bVeri = await bantVerisiniCek();
       const acikBantlar = bVeri.filter(b => b.durum === "acik");
       setCanliBantlar(acikBantlar);
-      
+
       // İlk açık bant için olay ve trend geçmişini çekelim (şuanlık B1)
       if (acikBantlar.length > 0) {
         const events = await getPiEvents(acikBantlar[0].id);
@@ -66,12 +68,12 @@ export default function UretimEkrani() {
   const aktifToplamUretim = canliBantlar.reduce((sum, b) => sum + (b.toplamUretim || 0), 0);
   const aktifIyiUretim = canliBantlar.reduce((sum, b) => sum + (b.iyiUretim || 0), 0);
   const aktifHatali = aktifToplamUretim - aktifIyiUretim;
-  
-  const rawGecti = aktifToplamUretim > 0 ? (aktifIyiUretim / aktifToplamUretim) * 100 : 98.36;
-  const rawRed = aktifToplamUretim > 0 ? (Math.max(0, aktifHatali) / aktifToplamUretim) * 100 : 0.64;
-  
-  const gectiPct = Math.min(100, Math.max(0, rawGecti));
-  const redPct = Math.min(100 - gectiPct, Math.max(0, rawRed));
+
+  const rawGectiPct = aktifToplamUretim > 0 ? (aktifIyiUretim / aktifToplamUretim) * 100 : 98.36;
+  const rawRedPct = aktifToplamUretim > 0 ? (aktifHatali / aktifToplamUretim) * 100 : 0.64;
+
+  const gectiPct = Math.min(100, Math.max(0, rawGectiPct));
+  const redPct = Math.min(100 - gectiPct, Math.max(0, rawRedPct));
   const uyariPct = Math.max(0, 100 - gectiPct - redPct);
 
   const aktifPartiSayisi = canliBantlar.length;
@@ -80,24 +82,60 @@ export default function UretimEkrani() {
   const lineData2 = piTrendler.length > 0 ? piTrendler.map(t => ({ value: t.miktar })) : hizProfili.map(d => ({ value: d.miktar }));
 
   const kaliteDagilim = [
-    { label: "Geçti",      val: `%${gectiPct.toFixed(2)}`, pct: gectiPct, color: C.mint  },
-    { label: "Uyarı",      val: `%${Math.max(0, uyariPct).toFixed(2)}`,   pct: Math.max(0, uyariPct),   color: C.sand  },
-    { label: "Reddedildi", val: `%${redPct.toFixed(2)}`,  pct: redPct,  color: C.peach },
+    { label: "Geçti", val: `%${gectiPct.toFixed(2)}`, pct: gectiPct, color: C.mint },
+    { label: "Uyarı", val: `%${Math.max(0, uyariPct).toFixed(2)}`, pct: Math.max(0, uyariPct), color: C.sand },
+    { label: "Reddedildi", val: `%${redPct.toFixed(2)}`, pct: redPct, color: C.peach },
   ];
 
   const filtreliPartiler = aktifFiltre === "Tümü"
     ? piOlaylar
     : piOlaylar.filter(p => p.tip === aktifFiltre);
 
-  // Rapor İndir simülasyonu
-  const raporIndir = () => {
+  const raporIndir = async () => {
     setRaporYukleniyor(true);
     setRaporBasarili(false);
-    setTimeout(() => {
-      setRaporYukleniyor(false);
+    try {
+      const gecti = gectiPct.toFixed(2);
+      const htmlContent = `
+        <html>
+          <head>
+            <style>
+              body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #333; }
+              h1 { color: #2E5DA8; text-align: center; border-bottom: 2px solid #EBF0FA; padding-bottom: 20px; }
+              .box { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+              .row { display: flex; justify-content: space-between; border-bottom: 1px solid #dee2e6; padding: 10px 0; }
+              .label { font-weight: bold; color: #555; }
+              .val { color: #000; font-weight: bold; }
+              .footer { text-align: center; font-size: 12px; color: #999; margin-top: 40px; }
+            </style>
+          </head>
+          <body>
+            <h1>Adapha Üretim Raporu</h1>
+            <div class="box">
+              <div class="row"><span class="label">Tarih</span> <span class="val">${new Date().toLocaleString("tr-TR")}</span></div>
+              <div class="row"><span class="label">Aktif Parti Sayısı</span> <span class="val">${aktifPartiSayisi > 0 ? aktifPartiSayisi : 37}</span></div>
+              <div class="row"><span class="label">Toplam Üretim</span> <span class="val">${aktifToplamUretim > 0 ? aktifToplamUretim.toLocaleString("tr-TR") : "43.624"}</span></div>
+            </div>
+            <div class="box">
+              <div class="row"><span class="label">Sertifikalı Ürün (%)</span> <span class="val" style="color: #2F9C95;">%${gecti}</span></div>
+              <div class="row"><span class="label">Uyarı Seviyesi (%)</span> <span class="val" style="color: #E5B15D;">%${uyariPct.toFixed(2)}</span></div>
+              <div class="row"><span class="label">Hatalı / Fire (%)</span> <span class="val" style="color: #E76F51;">%${redPct.toFixed(2)}</span></div>
+            </div>
+            <div class="footer">
+              <p>Bu rapor Adapha AI tarafından otomatik olarak oluşturulmuştur.</p>
+            </div>
+          </body>
+        </html>
+      `;
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Üretim Raporunu İndir' });
       setRaporBasarili(true);
       setTimeout(() => setRaporBasarili(false), 3000);
-    }, 2000);
+    } catch (error) {
+      console.error("PDF Hatası:", error);
+    } finally {
+      setRaporYukleniyor(false);
+    }
   };
 
   return (
@@ -106,7 +144,7 @@ export default function UretimEkrani() {
       {/* Başlık */}
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }}>
         <View>
-          <Text style={s.dateText}>6 Ağustos 2026</Text>
+          <Text style={s.dateText}>{new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
           <Text style={s.pageTitle}>Üretim</Text>
           <Text style={s.pageSub}>Yönetimi</Text>
         </View>
@@ -181,9 +219,9 @@ export default function UretimEkrani() {
         <View style={[s.typeGrid, { borderTopWidth: 1, borderTopColor: C.border, marginTop: 12, paddingTop: 12 }]}>
           {[
             { label: "Tip-M", pct: "%45", color: C.peach },
-            { label: "Tip-A", pct: "%25", color: C.blue  },
-            { label: "Tip-B", pct: "%20", color: C.mint  },
-            { label: "Tip-C", pct: "%10", color: C.lav   },
+            { label: "Tip-A", pct: "%25", color: C.blue },
+            { label: "Tip-B", pct: "%20", color: C.mint },
+            { label: "Tip-C", pct: "%10", color: C.lav },
           ].map(t => (
             <View key={t.label} style={{ flexDirection: "row", alignItems: "center", gap: 6, width: "48%" }}>
               <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.color }} />
@@ -216,7 +254,7 @@ export default function UretimEkrani() {
       </Card>
 
       {/* Yönet kutucuğu */}
-      <View style={[s.manageTile, { backgroundColor: C.mintLt, marginBottom: 12 }]}>
+      <View style={[s.manageTile, { backgroundColor: C.mintLt }]}>
         <View style={[s.manageIcon, { backgroundColor: C.mint }]}>
           <Settings2 size={18} color="white" />
         </View>
@@ -226,6 +264,8 @@ export default function UretimEkrani() {
         </View>
         <ChevronRight size={16} color={C.mint} />
       </View>
+
+
 
       {/* Filtreler */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -241,7 +281,7 @@ export default function UretimEkrani() {
       {filtreliPartiler.map((b, i) => {
         // Tarih formatı düzeltmesi
         const tarihFormat = b.tarih ? new Date(b.tarih).toLocaleDateString("tr-TR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Belirsiz";
-        
+
         return (
           <View key={i} style={s.partiCard}>
             <View style={[s.partiTop, { backgroundColor: C.peachLt }]}>
@@ -280,6 +320,8 @@ export default function UretimEkrani() {
 
       {/* ───── MODALLAR ───── */}
 
+
+
       {/* Parti Detay Modalı */}
       <ModalBottomSheet
         visible={detayModal}
@@ -294,12 +336,12 @@ export default function UretimEkrani() {
             </View>
 
             {[
-              { label: "Hat",        val: seciliParti.rozet },
-              { label: "Ürün Tipi",  val: seciliParti.tip   },
-              { label: "Birim",      val: seciliParti.birim  },
-              { label: "Verimlilik", val: seciliParti.verim  },
-              { label: "Hata",       val: seciliParti.hata   },
-              { label: "Durum",      val: seciliParti.durum  },
+              { label: "Hat", val: seciliParti.rozet },
+              { label: "Ürün Tipi", val: seciliParti.tip },
+              { label: "Birim", val: seciliParti.birim },
+              { label: "Verimlilik", val: seciliParti.verim },
+              { label: "Hata", val: seciliParti.hata },
+              { label: "Durum", val: seciliParti.durum },
             ].map(r => (
               <View key={r.label} style={s.detailRow}>
                 <Text style={s.detailLabel}>{r.label}</Text>
@@ -362,3 +404,4 @@ const s = StyleSheet.create({
   detailLabel: { fontSize: 12, color: C.muted },
   detailVal: { fontSize: 12, fontWeight: "700", color: C.text },
 });
+

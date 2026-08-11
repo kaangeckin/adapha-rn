@@ -80,12 +80,12 @@ export default function HomeScreen() {
           hizToplami += (yeniHiz || 0);
           return { ...bant, anlikHiz: yeniHiz };
         });
-        
+
         // Ortalama hızı da canlı güncelle
         if (yeniBantlar.length > 0) {
           setOzet(eski => ({ ...eski, anlikHizOrta: hizToplami / yeniBantlar.length }));
         }
-        
+
         return yeniBantlar;
       });
     });
@@ -120,13 +120,10 @@ export default function HomeScreen() {
   const ortalamaSertifika = canliBantlar.filter(b => b.sertifikaOrani).length > 0
     ? canliBantlar.reduce((sum, b) => sum + (b.sertifikaOrani || 0), 0) / canliBantlar.filter(b => b.sertifikaOrani).length
     : 0;
-  
+
   const hataliUretim = Math.max(0, aktifToplamUretim > 0 ? (aktifToplamUretim - aktifIyiUretim) : 0);
   const rawHataOrani = aktifToplamUretim > 0 ? (hataliUretim / aktifToplamUretim * 100) : 0;
-  const rawSertifika = aktifToplamUretim > 0 ? (aktifIyiUretim / aktifToplamUretim * 100) : ortalamaSertifika;
-  
-  const guncelSertifika = Math.min(100, Math.max(0, rawSertifika));
-  const hataOrani = Math.min(100 - guncelSertifika, Math.max(0, rawHataOrani));
+  const hataOrani = Math.min(100, Math.max(0, rawHataOrani));
 
   if (loading) {
     return <View style={[s.scroll, { justifyContent: "center", alignItems: "center" }]}><ActivityIndicator color={C.peach} /></View>;
@@ -138,14 +135,13 @@ export default function HomeScreen() {
       {/* Hero */}
       <View style={s.hero}>
         <View style={{ zIndex: 1 }}>
-          <Text style={s.heroDate}>6 Ağustos 2026</Text>
+          <Text style={s.heroDate}>{new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
           <Text style={s.heroTitle}>Makine Genel Bakış</Text>
           <Text style={s.heroSub}>Jiangsu JWC Machinery Co., Ltd</Text>
         </View>
         <View style={s.heroBubble1} />
         <View style={s.heroBubble2} />
       </View>
-
 
       {/* Stat kutucukları (GERÇEK VERİ) */}
       <View style={s.statRow}>
@@ -239,7 +235,7 @@ export default function HomeScreen() {
             <Text style={[s.badgeText, { color: C.peach }]}>Aylık</Text>
           </View>
         </View>
-        <Text style={[s.perfLabel, { marginBottom: 12 }]}>Sertifika Oranı (Canlı): <Text style={[s.perfVal, { color: C.text }]}>%{guncelSertifika.toFixed(2)}</Text></Text>
+        <Text style={[s.perfLabel, { marginBottom: 12 }]}>Sertifika Oranı (Canlı): <Text style={[s.perfVal, { color: C.text }]}>%{ortalamaSertifika.toFixed(2)}</Text></Text>
         <View style={{ flexDirection: "row", gap: 16, marginBottom: 8 }}>
           {[{ c: C.blue, l: "Çıktı" }, { c: C.mint, l: "İyi" }].map(({ c, l }) => (
             <View key={l} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -281,7 +277,7 @@ export default function HomeScreen() {
       <Card>
         <SH title="Üretim Özeti" action="Detaylar" />
         {[
-          { dot: C.mint, label: "İyi Ürünler", val: `%${guncelSertifika.toFixed(2)}  ·  ${aktifIyiUretim.toLocaleString("tr-TR")}` },
+          { dot: C.mint, label: "İyi Ürünler", val: `%${ortalamaSertifika.toFixed(2)}  ·  ${aktifIyiUretim.toLocaleString("tr-TR")}` },
           { dot: C.peachMd, label: "Hatalı / Fire", val: `%${hataOrani.toFixed(2)}   ·  ${hataliUretim.toLocaleString("tr-TR")}` },
         ].map(r => (
           <View key={r.label} style={s.summaryRow}>
@@ -294,7 +290,7 @@ export default function HomeScreen() {
         ))}
         <View style={s.divider} />
         {[
-          { label: "Sertifikalı Üretim", pct: `%${guncelSertifika.toFixed(2)}`, adet: `${aktifIyiUretim.toLocaleString("tr-TR")} birim`, color: C.mint },
+          { label: "Sertifikalı Üretim", pct: `%${ortalamaSertifika.toFixed(2)}`, adet: `${aktifIyiUretim.toLocaleString("tr-TR")} birim`, color: C.mint },
           { label: "Standart Altı", pct: `%${hataOrani.toFixed(2)}`, adet: `${hataliUretim.toLocaleString("tr-TR")} birim`, color: C.peach },
         ].map(row => (
           <View key={row.label} style={s.summaryRow}>
@@ -312,7 +308,7 @@ export default function HomeScreen() {
 
       {/* Üretim Programı */}
       <Card>
-        <SH title="Üretim Programı" action="+ Çalışma Ekle" />
+        <SH title="Üretim Programı" />
         <View style={[s.searchBar, { backgroundColor: C.blueLt }]}>
           <Search size={12} color={C.muted} />
           <Text style={s.searchText}>Program ara...</Text>
@@ -332,14 +328,16 @@ export default function HomeScreen() {
         {programVerisi
           .filter(row => aktifProgramFiltre === "Tümü" || row.tip === aktifProgramFiltre)
           .map((row, i, arr) => (
-          <View key={i} style={[s.tableRow, { borderBottomColor: C.border, borderBottomWidth: i < arr.length - 1 ? 1 : 0 }]}>
-            <Text style={s.tableCell}>{row.parti}</Text>
-            <Text style={s.tableCell}>{row.hat}</Text>
-            <Text style={s.tableCell}>{row.tip}</Text>
-            <Text style={[s.tableCell, { color: C.muted }]}>{row.saat}</Text>
-          </View>
-        ))}
+            <View key={i} style={[s.tableRow, { borderBottomColor: C.border, borderBottomWidth: i < arr.length - 1 ? 1 : 0 }]}>
+              <Text style={s.tableCell}>{row.parti}</Text>
+              <Text style={s.tableCell}>{row.hat}</Text>
+              <Text style={s.tableCell}>{row.tip}</Text>
+              <Text style={[s.tableCell, { color: C.muted }]}>{row.saat}</Text>
+            </View>
+          ))}
       </Card>
+
+
 
     </ScrollView>
   );

@@ -100,19 +100,19 @@ export async function performansTablosunuCek() {
 
 // Şimdilik statik kalan analiz verileri (zamanla API'ye eklenebilir):
 export const hizProfili = [
-  { t: "0:00", hiz: 0, miktar: 0 }, { t: "0:30", hiz: 18, miktar: 15 },
-  { t: "1:00", hiz: 188, miktar: 182 }, { t: "1:30", hiz: 192, miktar: 188 },
-  { t: "2:00", hiz: 196, miktar: 193 }, { t: "2:30", hiz: 190, miktar: 185 },
-  { t: "3:00", hiz: 12, miktar: 9 }, { t: "3:30", hiz: 6, miktar: 4 },
-  { t: "4:00", hiz: 148, miktar: 143 }, { t: "4:30", hiz: 162, miktar: 157 },
-  { t: "5:00", hiz: 152, miktar: 148 },
+  { t: "0:00", hiz: 0, miktar: 0 }, { t: "0:30", hiz: 18, miktar: 1500 },
+  { t: "1:00", hiz: 188, miktar: 18200 }, { t: "1:30", hiz: 192, miktar: 18800 },
+  { t: "2:00", hiz: 196, miktar: 19300 }, { t: "2:30", hiz: 190, miktar: 18500 },
+  { t: "3:00", hiz: 12, miktar: 900 }, { t: "3:30", hiz: 6, miktar: 400 },
+  { t: "4:00", hiz: 148, miktar: 14300 }, { t: "4:30", hiz: 162, miktar: 15700 },
+  { t: "5:00", hiz: 152, miktar: 14800 },
 ];
 
 export const aylikUretim = [
-  { ay: "Oca", cikti: 251, iyi: 248 }, { ay: "Şub", cikti: 188, iyi: 185 },
-  { ay: "Mar", cikti: 220, iyi: 216 }, { ay: "Nis", cikti: 198, iyi: 194 },
-  { ay: "May", cikti: 242, iyi: 238 }, { ay: "Haz", cikti: 268, iyi: 263 },
-  { ay: "Tem", cikti: 284, iyi: 279 }, { ay: "Ağu", cikti: 310, iyi: 305 },
+  { ay: "Oca", cikti: 251000, iyi: 248500 }, { ay: "Şub", cikti: 188000, iyi: 185200 },
+  { ay: "Mar", cikti: 220000, iyi: 216800 }, { ay: "Nis", cikti: 198000, iyi: 194100 },
+  { ay: "May", cikti: 242000, iyi: 238900 }, { ay: "Haz", cikti: 268000, iyi: 263500 },
+  { ay: "Tem", cikti: 284000, iyi: 279400 }, { ay: "Ağu", cikti: 310000, iyi: 305800 },
 ];
 
 export const partiBuyume = [

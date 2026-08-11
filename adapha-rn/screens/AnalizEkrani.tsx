@@ -8,6 +8,8 @@ import { C } from "../constants/colors";
 import { Card, SH } from "../components/Card";
 import ModalBottomSheet from "../components/ModalBottomSheet";
 import { partiBuyume, radarVerisiniCek, performansTablosunuCek, isiHaritasiniCek, bantVerisiniCek, socket, Bant, getPiSamples, getPiOee } from "../services/api";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 
 const W = Dimensions.get("window").width;
 
@@ -85,7 +87,7 @@ export default function AnalizEkrani() {
         setRadarData(rData || []);
         setPerformansData(pData || []);
         setIsiData(iData || { hatlar: [], sutunlar: [], degerler: [] });
-        
+
         const acikBantlar = bVeri.filter(b => b.durum === "acik");
         setCanliBantlar(acikBantlar);
 
@@ -122,14 +124,51 @@ export default function AnalizEkrani() {
     };
   }, []);
 
-  const raporIndir = () => {
+  const raporIndir = async () => {
     setRaporYukleniyor(true);
     setRaporBasarili(false);
-    setTimeout(() => {
-      setRaporYukleniyor(false);
+    try {
+      const gecti = gectiPct.toFixed(2);
+      const htmlContent = `
+        <html>
+          <head>
+            <style>
+              body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #333; }
+              h1 { color: #2E5DA8; text-align: center; border-bottom: 2px solid #EBF0FA; padding-bottom: 20px; }
+              .box { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+              .row { display: flex; justify-content: space-between; border-bottom: 1px solid #dee2e6; padding: 10px 0; }
+              .label { font-weight: bold; color: #555; }
+              .val { color: #000; font-weight: bold; }
+              .footer { text-align: center; font-size: 12px; color: #999; margin-top: 40px; }
+            </style>
+          </head>
+          <body>
+            <h1>Adapha Analitik Raporu</h1>
+            <div class="box">
+              <div class="row"><span class="label">Tarih</span> <span class="val">${new Date().toLocaleString("tr-TR")}</span></div>
+              <div class="row"><span class="label">Ortalama OEE Puanı</span> <span class="val">%${piOee.toFixed(2)}</span></div>
+              <div class="row"><span class="label">Toplam Üretim</span> <span class="val">${aktifToplamUretim > 0 ? aktifToplamUretim.toLocaleString("tr-TR") : "43.624"}</span></div>
+            </div>
+            <div class="box">
+              <div class="row"><span class="label">Sertifikalı Ürün (%)</span> <span class="val" style="color: #2F9C95;">%${gecti}</span></div>
+              <div class="row"><span class="label">Uyarı Seviyesi (%)</span> <span class="val" style="color: #E5B15D;">%${uyariPct.toFixed(2)}</span></div>
+              <div class="row"><span class="label">Hatalı / Fire (%)</span> <span class="val" style="color: #E76F51;">%${redPct.toFixed(2)}</span></div>
+            </div>
+            <div class="footer">
+              <p>Bu rapor Adapha AI tarafından otomatik olarak oluşturulmuştur.</p>
+            </div>
+          </body>
+        </html>
+      `;
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Analitik Raporunu İndir' });
       setRaporBasarili(true);
       setTimeout(() => setRaporBasarili(false), 3000);
-    }, 2000);
+    } catch (error) {
+      console.error("PDF Hatası:", error);
+    } finally {
+      setRaporYukleniyor(false);
+    }
   };
 
 
@@ -138,19 +177,19 @@ export default function AnalizEkrani() {
   // CANLI VERİLERDEN HESAPLAMALAR
   const aktifToplamUretim = canliBantlar.reduce((sum, b) => sum + (b.toplamUretim || 0), 0);
   const aktifIyiUretim = canliBantlar.reduce((sum, b) => sum + (b.iyiUretim || 0), 0);
-  const aktifHatali = Math.max(0, aktifToplamUretim - aktifIyiUretim);
-  
-  const rawGecti = piOee > 0 ? piOee : (aktifToplamUretim > 0 ? (aktifIyiUretim / aktifToplamUretim) * 100 : 98.36);
-  const rawRed = aktifToplamUretim > 0 ? (aktifHatali / aktifToplamUretim) * 100 : 0.64;
-  
-  const gectiPct = Math.min(100, Math.max(0, rawGecti));
-  const redPct = Math.min(100 - gectiPct, Math.max(0, rawRed));
+  const aktifHatali = Math.max(0, aktifToplamUretim > 0 ? (aktifToplamUretim - aktifIyiUretim) : 0);
+
+  const rawGectiPct = piOee > 0 ? piOee : (aktifToplamUretim > 0 ? (aktifIyiUretim / aktifToplamUretim) * 100 : 98.36);
+  const rawRedPct = aktifToplamUretim > 0 ? (aktifHatali / aktifToplamUretim) * 100 : 0.64;
+
+  const gectiPct = Math.min(100, Math.max(0, rawGectiPct));
+  const redPct = Math.min(100 - gectiPct, Math.max(0, rawRedPct));
   const uyariPct = Math.max(0, 100 - gectiPct - redPct);
 
   const kaliteSeviyeler = [
-    { label: "Sertifikalı",        pct: gectiPct, color: C.mint,  text: `%${gectiPct.toFixed(2)}` },
-    { label: "Kabul Edilebilir",   pct: Math.max(0, uyariPct), color: C.blue,  text: `%${Math.max(0, uyariPct).toFixed(2)}` },
-    { label: "Hatalı",             pct: redPct,  color: C.peach, text: `%${redPct.toFixed(2)}`  },
+    { label: "Sertifikalı", pct: gectiPct, color: C.mint, text: `%${gectiPct.toFixed(2)}` },
+    { label: "Kabul Edilebilir", pct: Math.max(0, uyariPct), color: C.blue, text: `%${Math.max(0, uyariPct).toFixed(2)}` },
+    { label: "Hatalı", pct: redPct, color: C.peach, text: `%${redPct.toFixed(2)}` },
   ];
 
   if (loading) {
@@ -163,7 +202,7 @@ export default function AnalizEkrani() {
       {/* Başlık */}
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
         <View>
-          <Text style={s.dateText}>6 Ağustos 2026</Text>
+          <Text style={s.dateText}>{new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
           <Text style={s.pageTitle}>Sonuçlar &</Text>
           <Text style={s.pageTitle}>Analitikler</Text>
         </View>
@@ -229,9 +268,9 @@ export default function AnalizEkrani() {
         ))}
         <View style={[s.grid3, { borderTopWidth: 1, borderTopColor: C.border, paddingTop: 12, marginTop: 4 }]}>
           {[
-            { label: "Sertifikalı", sub: `${aktifIyiUretim > 0 ? aktifIyiUretim.toLocaleString("tr-TR") : "42.909"} birim`, color: C.mint  },
-            { label: "İncelendi",   sub: `${Math.floor((aktifIyiUretim > 0 ? aktifIyiUretim : 42909) * 0.15).toLocaleString("tr-TR")} birim doğru`, color: C.blue  },
-            { label: "Aksiyon",     sub: "Bu hafta 2 denetim ekle", color: C.peach },
+            { label: "Sertifikalı", sub: `${aktifIyiUretim > 0 ? aktifIyiUretim.toLocaleString("tr-TR") : "42.909"} birim`, color: C.mint },
+            { label: "İncelendi", sub: `${Math.floor((aktifIyiUretim > 0 ? aktifIyiUretim : 42909) * 0.15).toLocaleString("tr-TR")} birim doğru`, color: C.blue },
+            { label: "Aksiyon", sub: "Bu hafta 2 denetim ekle", color: C.peach },
           ].map(r => (
             <View key={r.label} style={[s.miniCard, { backgroundColor: `${r.color}18` }]}>
               <Text style={{ fontSize: 9, fontWeight: "700", color: r.color, marginBottom: 2 }}>{r.label}</Text>
@@ -256,7 +295,7 @@ export default function AnalizEkrani() {
         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
           {[
             { dot: C.mint, label: "İyi Çıktı", val: `${aktifIyiUretim > 0 ? aktifIyiUretim.toLocaleString("tr-TR") : "521"}` },
-            { dot: C.lav,  label: "Hatalı",    val: `${aktifHatali > 0 ? aktifHatali.toLocaleString("tr-TR") : "79"}`  },
+            { dot: C.lav, label: "Hatalı", val: `${aktifHatali > 0 ? aktifHatali.toLocaleString("tr-TR") : "79"}` },
           ].map(r => (
             <View key={r.label} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: r.dot }} />
@@ -381,10 +420,10 @@ export default function AnalizEkrani() {
         </View>
         {performansData.map((row: any, i: number) => {
           const tagStyle =
-            row.oncelik === "Acil"   ? { bg: C.peachLt, color: C.peach } :
-            row.oncelik === "Yüksek" ? { bg: "#EBF0FA", color: "#2E5DA8" } :
-            row.oncelik === "Orta"   ? { bg: C.mintLt,  color: C.mint  } :
-                                       { bg: C.blueLt,  color: C.blue  };
+            row.oncelik === "Acil" ? { bg: C.peachLt, color: C.peach } :
+              row.oncelik === "Yüksek" ? { bg: "#EBF0FA", color: "#2E5DA8" } :
+                row.oncelik === "Orta" ? { bg: C.mintLt, color: C.mint } :
+                  { bg: C.blueLt, color: C.blue };
           return (
             <View key={i} style={[s.tableRow, { borderBottomWidth: i < performansData.length - 1 ? 1 : 0, borderBottomColor: C.border }]}>
               <View style={[s.priorityTag, { backgroundColor: tagStyle.bg }]}>
