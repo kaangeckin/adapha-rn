@@ -54,11 +54,7 @@ export default function HomeScreen() {
   const [ozet, setOzet] = useState({ aktifHatSayisi: 0, toplamCikti: 0, anlikHizOrta: 0 });
   const [canliBantlar, setCanliBantlar] = useState<Bant[]>([]);
   const [loading, setLoading] = useState(true);
-  const [yeniCalismaModal, setYeniCalismaModal] = useState(false);
   const [aktifProgramFiltre, setAktifProgramFiltre] = useState("Tümü");
-  const [secilenHat, setSecilenHat] = useState("Hat-01");
-  const [secilenTip, setSecilenTip] = useState("Tip-M");
-  const [calismaOlusturuldu, setCalismaOlusturuldu] = useState(false);
 
   useEffect(() => {
     // 1. İlk yüklemede API'den gerçek veriyi çek
@@ -125,8 +121,12 @@ export default function HomeScreen() {
     ? canliBantlar.reduce((sum, b) => sum + (b.sertifikaOrani || 0), 0) / canliBantlar.filter(b => b.sertifikaOrani).length
     : 0;
   
-  const hataliUretim = aktifToplamUretim > 0 ? (aktifToplamUretim - aktifIyiUretim) : 0;
-  const hataOrani = aktifToplamUretim > 0 ? (hataliUretim / aktifToplamUretim * 100) : 0;
+  const hataliUretim = Math.max(0, aktifToplamUretim > 0 ? (aktifToplamUretim - aktifIyiUretim) : 0);
+  const rawHataOrani = aktifToplamUretim > 0 ? (hataliUretim / aktifToplamUretim * 100) : 0;
+  const rawSertifika = aktifToplamUretim > 0 ? (aktifIyiUretim / aktifToplamUretim * 100) : ortalamaSertifika;
+  
+  const guncelSertifika = Math.min(100, Math.max(0, rawSertifika));
+  const hataOrani = Math.min(100 - guncelSertifika, Math.max(0, rawHataOrani));
 
   if (loading) {
     return <View style={[s.scroll, { justifyContent: "center", alignItems: "center" }]}><ActivityIndicator color={C.peach} /></View>;
@@ -141,21 +141,11 @@ export default function HomeScreen() {
           <Text style={s.heroDate}>6 Ağustos 2026</Text>
           <Text style={s.heroTitle}>Makine Genel Bakış</Text>
           <Text style={s.heroSub}>Jiangsu JWC Machinery Co., Ltd</Text>
-          <TouchableOpacity style={s.heroBtn} onPress={() => setYeniCalismaModal(true)}>
-            <Zap size={12} color="white" />
-            <Text style={s.heroBtnText}>Yeni Çalışma Başlat</Text>
-          </TouchableOpacity>
         </View>
         <View style={s.heroBubble1} />
         <View style={s.heroBubble2} />
       </View>
 
-      {/* Başarı bildirimi */}
-      {calismaOlusturuldu && (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: C.mintLt, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.mint }}>
-          <Text style={{ fontSize: 12, fontWeight: "600", color: C.mint }}>✓ Yeni çalışma oluşturuldu!</Text>
-        </View>
-      )}
 
       {/* Stat kutucukları (GERÇEK VERİ) */}
       <View style={s.statRow}>
@@ -249,7 +239,7 @@ export default function HomeScreen() {
             <Text style={[s.badgeText, { color: C.peach }]}>Aylık</Text>
           </View>
         </View>
-        <Text style={[s.perfLabel, { marginBottom: 12 }]}>Sertifika Oranı (Canlı): <Text style={[s.perfVal, { color: C.text }]}>%{ortalamaSertifika.toFixed(2)}</Text></Text>
+        <Text style={[s.perfLabel, { marginBottom: 12 }]}>Sertifika Oranı (Canlı): <Text style={[s.perfVal, { color: C.text }]}>%{guncelSertifika.toFixed(2)}</Text></Text>
         <View style={{ flexDirection: "row", gap: 16, marginBottom: 8 }}>
           {[{ c: C.blue, l: "Çıktı" }, { c: C.mint, l: "İyi" }].map(({ c, l }) => (
             <View key={l} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -291,7 +281,7 @@ export default function HomeScreen() {
       <Card>
         <SH title="Üretim Özeti" action="Detaylar" />
         {[
-          { dot: C.mint, label: "İyi Ürünler", val: `%${ortalamaSertifika.toFixed(2)}  ·  ${aktifIyiUretim.toLocaleString("tr-TR")}` },
+          { dot: C.mint, label: "İyi Ürünler", val: `%${guncelSertifika.toFixed(2)}  ·  ${aktifIyiUretim.toLocaleString("tr-TR")}` },
           { dot: C.peachMd, label: "Hatalı / Fire", val: `%${hataOrani.toFixed(2)}   ·  ${hataliUretim.toLocaleString("tr-TR")}` },
         ].map(r => (
           <View key={r.label} style={s.summaryRow}>
@@ -304,7 +294,7 @@ export default function HomeScreen() {
         ))}
         <View style={s.divider} />
         {[
-          { label: "Sertifikalı Üretim", pct: `%${ortalamaSertifika.toFixed(2)}`, adet: `${aktifIyiUretim.toLocaleString("tr-TR")} birim`, color: C.mint },
+          { label: "Sertifikalı Üretim", pct: `%${guncelSertifika.toFixed(2)}`, adet: `${aktifIyiUretim.toLocaleString("tr-TR")} birim`, color: C.mint },
           { label: "Standart Altı", pct: `%${hataOrani.toFixed(2)}`, adet: `${hataliUretim.toLocaleString("tr-TR")} birim`, color: C.peach },
         ].map(row => (
           <View key={row.label} style={s.summaryRow}>
@@ -350,62 +340,6 @@ export default function HomeScreen() {
           </View>
         ))}
       </Card>
-
-      {/* Yeni Çalışma Modalı */}
-      <ModalBottomSheet
-        visible={yeniCalismaModal}
-        onClose={() => setYeniCalismaModal(false)}
-        title="Yeni Çalışma Oluştur"
-      >
-        <View style={{ gap: 16, paddingBottom: 8 }}>
-          <View>
-            <Text style={{ fontSize: 12, fontWeight: "600", color: C.text, marginBottom: 10 }}>Hat Seçimi</Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {["Hat-01", "Hat-02", "Hat-03", "Hat-04"].map(h => (
-                <TouchableOpacity
-                  key={h}
-                  style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1.5, borderColor: secilenHat === h ? C.peach : C.border, backgroundColor: secilenHat === h ? C.peach : "white" }}
-                  onPress={() => setSecilenHat(h)}
-                >
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: secilenHat === h ? "white" : C.muted }}>{h}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-          <View>
-            <Text style={{ fontSize: 12, fontWeight: "600", color: C.text, marginBottom: 10 }}>Ürün Tipi</Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {["Tip-M", "Tip-A", "Tip-B", "Tip-C"].map(t => (
-                <TouchableOpacity
-                  key={t}
-                  style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1.5, borderColor: secilenTip === t ? C.peach : C.border, backgroundColor: secilenTip === t ? C.peach : "white" }}
-                  onPress={() => setSecilenTip(t)}
-                >
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: secilenTip === t ? "white" : C.muted }}>{t}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-          <View style={{ borderRadius: 12, padding: 14, backgroundColor: C.mintLt }}>
-            <Text style={{ fontSize: 11, color: C.mint, fontWeight: "600" }}>Özet</Text>
-            <Text style={{ fontSize: 12, color: C.text, marginTop: 4 }}>
-              <Text style={{ fontWeight: "700" }}>{secilenHat}</Text> hattında{" "}
-              <Text style={{ fontWeight: "700" }}>{secilenTip}</Text> tipinde yeni çalışma başlatılacak.
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: C.peach, paddingVertical: 12, borderRadius: 16 }}
-            onPress={() => {
-              setYeniCalismaModal(false);
-              setCalismaOlusturuldu(true);
-              setTimeout(() => setCalismaOlusturuldu(false), 3000);
-            }}
-          >
-            <Plus size={15} color="white" />
-            <Text style={{ color: "white", fontSize: 13, fontWeight: "700" }}>Çalışmayı Başlat</Text>
-          </TouchableOpacity>
-        </View>
-      </ModalBottomSheet>
 
     </ScrollView>
   );

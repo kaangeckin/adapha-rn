@@ -15,14 +15,10 @@ const W = Dimensions.get("window").width;
 
 export default function UretimEkrani() {
   const [aktifFiltre, setAktifFiltre] = useState("Tümü");
-  const [yeniCalismaModal, setYeniCalismaModal] = useState(false);
   const [detayModal, setDetayModal] = useState(false);
   const [seciliParti, setSeciliParti] = useState<any>(null);
   const [raporYukleniyor, setRaporYukleniyor] = useState(false);
   const [raporBasarili, setRaporBasarili] = useState(false);
-  const [secilenHat, setSecilenHat] = useState("Hat-01");
-  const [secilenTip, setSecilenTip] = useState("Tip-M");
-  const [calismaOlusturuldu, setCalismaOlusturuldu] = useState(false);
 
   // Canlı veriler
   const [canliBantlar, setCanliBantlar] = useState<Bant[]>([]);
@@ -71,9 +67,12 @@ export default function UretimEkrani() {
   const aktifIyiUretim = canliBantlar.reduce((sum, b) => sum + (b.iyiUretim || 0), 0);
   const aktifHatali = aktifToplamUretim - aktifIyiUretim;
   
-  const gectiPct = aktifToplamUretim > 0 ? (aktifIyiUretim / aktifToplamUretim) * 100 : 98.36;
-  const redPct = aktifToplamUretim > 0 ? (aktifHatali / aktifToplamUretim) * 100 : 0.64;
-  const uyariPct = 100 - gectiPct - redPct; // Geri kalan (simülasyon)
+  const rawGecti = aktifToplamUretim > 0 ? (aktifIyiUretim / aktifToplamUretim) * 100 : 98.36;
+  const rawRed = aktifToplamUretim > 0 ? (Math.max(0, aktifHatali) / aktifToplamUretim) * 100 : 0.64;
+  
+  const gectiPct = Math.min(100, Math.max(0, rawGecti));
+  const redPct = Math.min(100 - gectiPct, Math.max(0, rawRed));
+  const uyariPct = Math.max(0, 100 - gectiPct - redPct);
 
   const aktifPartiSayisi = canliBantlar.length;
 
@@ -101,12 +100,6 @@ export default function UretimEkrani() {
     }, 2000);
   };
 
-  const yeniCalismaOlustur = () => {
-    setYeniCalismaModal(false);
-    setCalismaOlusturuldu(true);
-    setTimeout(() => setCalismaOlusturuldu(false), 3000);
-  };
-
   return (
     <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
 
@@ -117,10 +110,6 @@ export default function UretimEkrani() {
           <Text style={s.pageTitle}>Üretim</Text>
           <Text style={s.pageSub}>Yönetimi</Text>
         </View>
-        <TouchableOpacity style={s.addBtn} onPress={() => setYeniCalismaModal(true)}>
-          <Plus size={13} color="white" />
-          <Text style={s.addBtnText}>Yeni Çalışma</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Başarı / Bildirim Toastları */}
@@ -128,12 +117,6 @@ export default function UretimEkrani() {
         <View style={s.toast}>
           <CheckCircle size={14} color={C.mint} />
           <Text style={s.toastText}>Rapor başarıyla indirildi!</Text>
-        </View>
-      )}
-      {calismaOlusturuldu && (
-        <View style={s.toast}>
-          <CheckCircle size={14} color={C.mint} />
-          <Text style={s.toastText}>Yeni çalışma oluşturuldu!</Text>
         </View>
       )}
 
@@ -233,7 +216,7 @@ export default function UretimEkrani() {
       </Card>
 
       {/* Yönet kutucuğu */}
-      <View style={[s.manageTile, { backgroundColor: C.mintLt }]}>
+      <View style={[s.manageTile, { backgroundColor: C.mintLt, marginBottom: 12 }]}>
         <View style={[s.manageIcon, { backgroundColor: C.mint }]}>
           <Settings2 size={18} color="white" />
         </View>
@@ -243,12 +226,6 @@ export default function UretimEkrani() {
         </View>
         <ChevronRight size={16} color={C.mint} />
       </View>
-
-      {/* Ekle butonu */}
-      <TouchableOpacity style={s.primaryBtn} onPress={() => setYeniCalismaModal(true)}>
-        <Plus size={15} color="white" />
-        <Text style={s.primaryBtnText}>Yeni Çalışma Ekle</Text>
-      </TouchableOpacity>
 
       {/* Filtreler */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -302,58 +279,6 @@ export default function UretimEkrani() {
       )}
 
       {/* ───── MODALLAR ───── */}
-
-      {/* Yeni Çalışma Modalı */}
-      <ModalBottomSheet
-        visible={yeniCalismaModal}
-        onClose={() => setYeniCalismaModal(false)}
-        title="Yeni Çalışma Oluştur"
-      >
-        <View style={{ gap: 16, paddingBottom: 8 }}>
-          <View>
-            <Text style={s.formLabel}>Hat Seçimi</Text>
-            <View style={s.optionRow}>
-              {["Hat-01", "Hat-02", "Hat-03", "Hat-04"].map(h => (
-                <TouchableOpacity
-                  key={h}
-                  style={[s.optionChip, secilenHat === h && { backgroundColor: C.peach, borderColor: C.peach }]}
-                  onPress={() => setSecilenHat(h)}
-                >
-                  <Text style={[s.optionChipText, secilenHat === h && { color: "white" }]}>{h}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          <View>
-            <Text style={s.formLabel}>Ürün Tipi</Text>
-            <View style={s.optionRow}>
-              {["Tip-M", "Tip-A", "Tip-B", "Tip-C"].map(t => (
-                <TouchableOpacity
-                  key={t}
-                  style={[s.optionChip, secilenTip === t && { backgroundColor: C.peach, borderColor: C.peach }]}
-                  onPress={() => setSecilenTip(t)}
-                >
-                  <Text style={[s.optionChipText, secilenTip === t && { color: "white" }]}>{t}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          <View style={[s.infoBox, { backgroundColor: C.mintLt }]}>
-            <Text style={{ fontSize: 11, color: C.mint, fontWeight: "600" }}>Özet</Text>
-            <Text style={{ fontSize: 12, color: C.text, marginTop: 4 }}>
-              <Text style={{ fontWeight: "700" }}>{secilenHat}</Text> hattında{" "}
-              <Text style={{ fontWeight: "700" }}>{secilenTip}</Text> tipinde yeni çalışma başlatılacak.
-            </Text>
-          </View>
-
-          <TouchableOpacity style={s.primaryBtn} onPress={yeniCalismaOlustur}>
-            <Plus size={15} color="white" />
-            <Text style={s.primaryBtnText}>Çalışmayı Başlat</Text>
-          </TouchableOpacity>
-        </View>
-      </ModalBottomSheet>
 
       {/* Parti Detay Modalı */}
       <ModalBottomSheet

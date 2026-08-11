@@ -138,11 +138,14 @@ export default function AnalizEkrani() {
   // CANLI VERİLERDEN HESAPLAMALAR
   const aktifToplamUretim = canliBantlar.reduce((sum, b) => sum + (b.toplamUretim || 0), 0);
   const aktifIyiUretim = canliBantlar.reduce((sum, b) => sum + (b.iyiUretim || 0), 0);
-  const aktifHatali = aktifToplamUretim - aktifIyiUretim;
+  const aktifHatali = Math.max(0, aktifToplamUretim - aktifIyiUretim);
   
-  const gectiPct = piOee > 0 ? piOee : (aktifToplamUretim > 0 ? (aktifIyiUretim / aktifToplamUretim) * 100 : 98.36);
-  const redPct = aktifToplamUretim > 0 ? (aktifHatali / aktifToplamUretim) * 100 : 0.64;
-  const uyariPct = 100 - gectiPct - redPct;
+  const rawGecti = piOee > 0 ? piOee : (aktifToplamUretim > 0 ? (aktifIyiUretim / aktifToplamUretim) * 100 : 98.36);
+  const rawRed = aktifToplamUretim > 0 ? (aktifHatali / aktifToplamUretim) * 100 : 0.64;
+  
+  const gectiPct = Math.min(100, Math.max(0, rawGecti));
+  const redPct = Math.min(100 - gectiPct, Math.max(0, rawRed));
+  const uyariPct = Math.max(0, 100 - gectiPct - redPct);
 
   const kaliteSeviyeler = [
     { label: "Sertifikalı",        pct: gectiPct, color: C.mint,  text: `%${gectiPct.toFixed(2)}` },
