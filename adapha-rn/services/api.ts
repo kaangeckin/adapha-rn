@@ -1,4 +1,5 @@
 import { io, Socket } from "socket.io-client";
+import Constants from "expo-constants";
 
 export type BantDurumu = "acik" | "kapali" | "SINYAL_YOK" | "BILINMIYOR";
 
@@ -46,9 +47,12 @@ export interface Bant {
   baglantiDurumu?: string;
 }
 
-// ── Sunucu IP Adresi (Uygulamanın çalıştığı ağdaki bilgisayarın IP'si) ──
-const API_URL = "http://192.168.1.187:3000/api";
-export const SOCKET_URL = "http://192.168.1.187:3000";
+// ── Sunucu IP Adresi (Dinamik) ──
+const DEFAULT_SERVER = "http://192.168.1.187:3000";
+const serverUrl = Constants.expoConfig?.extra?.serverUrl || DEFAULT_SERVER;
+
+const API_URL = `${serverUrl}/api`;
+export const SOCKET_URL = serverUrl;
 
 // Socket bağlantısını oluştur
 export const socket: Socket = io(SOCKET_URL);
