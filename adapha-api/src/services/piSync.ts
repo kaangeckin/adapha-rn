@@ -79,6 +79,7 @@ function baglanMakineye(bantId: string, piIp: string, io: Server) {
       // API-MOBIL.md şeması
       // kind: "update", status: "CALISIYOR", total, good, rate, speed
       if (payload.kind !== "update") return;
+      if (payload.machine_id !== bantId) return;
 
       const guncellenecekVeri: any = {
         sonGuncelleme: new Date(),

@@ -52,9 +52,23 @@ setInterval(async () => {
       yeniHiz = Number(yeniHiz.toFixed(1)); // Tek ondalık basamak
 
       // Test için üretim adetlerini de canlı olarak artıralım
-      const yeniToplam = (bant.toplamUretim || 43620) + Math.floor(Math.random() * 3);
-      const yeniIyi = (bant.iyiUretim || 42900) + (Math.random() > 0.1 ? 2 : 1); // Çoğunlukla iyi artsın
-      const yeniOran = Number(((yeniIyi / yeniToplam) * 100).toFixed(2));
+      let currentToplam = bant.toplamUretim || 43620;
+      let currentIyi = bant.iyiUretim || 42900;
+      
+      // Veritabanındaki olası hataları düzelt (iyi üretim, toplamı geçemez)
+      if (currentIyi > currentToplam) {
+        currentIyi = currentToplam; 
+      }
+
+      const uretimArtisi = Math.floor(Math.random() * 3) + 1; // 1 ile 3 arası ürün çıksın
+      let iyiArtisi = 0;
+      for (let i = 0; i < uretimArtisi; i++) {
+        if (Math.random() > 0.05) iyiArtisi++; // %95 ihtimalle sağlam ürün
+      }
+
+      const yeniToplam = currentToplam + uretimArtisi;
+      const yeniIyi = currentIyi + iyiArtisi;
+      const yeniOran = yeniToplam > 0 ? Number(((yeniIyi / yeniToplam) * 100).toFixed(2)) : 0;
 
       await prisma.bant.update({
         where: { id: bant.id },
