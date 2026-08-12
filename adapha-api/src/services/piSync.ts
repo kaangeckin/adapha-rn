@@ -91,9 +91,14 @@ function baglanMakineye(bantId: string, piIp: string, io: Server) {
       if (payload.good !== undefined) guncellenecekVeri.iyiUretim = Number(payload.good);
       if (payload.rate !== undefined) guncellenecekVeri.sertifikaOrani = Number(payload.rate);
       
-      // status alanını özel tutalım, mevcut modelde "durum" var ama 
-      // "mevcutModel" alanına şimdilik makine id'sini yazabiliriz veya boş bırakabiliriz
-      if (payload.machine_id) guncellenecekVeri.mevcutModel = String(payload.machine_id);
+      // B1 Eklemeleri
+      if (payload.model !== undefined) guncellenecekVeri.mevcutModel = String(payload.model);
+      if (payload.runtime !== undefined) guncellenecekVeri.calismaSuresi = Number(payload.runtime);
+      if (payload.oee !== undefined) guncellenecekVeri.oee = Number(payload.oee);
+      
+      // status alanını özel tutalım, mevcut modelde "durum" var
+      if (payload.status === "DURDU") guncellenecekVeri.durum = "kapali";
+      else if (payload.status === "CALISIYOR") guncellenecekVeri.durum = "acik";
 
       // Veritabanını güncelle
       const guncelBant = await prisma.bant.update({

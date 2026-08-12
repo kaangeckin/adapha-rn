@@ -35,6 +35,8 @@ model Bant {
   iyiUretim       Int?               // 42909
   sertifikaOrani  Float?             // 98.36
   calismaSuresi   Float?             // 4.1 (saat veya dakika)
+  oee             Float?             // Gerçek OEE değeri
+
   sonGuncelleme   DateTime           @default(now())
   
   hat             Hat                @relation(fields: [hatId], references: [id])
