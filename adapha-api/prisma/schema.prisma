@@ -131,6 +131,8 @@ model Olay {
   hata        String?
   
   bant        Bant     @relation(fields: [bantId], references: [id])
+
+  @@unique([bantId, tip, tarih])
 }
 
 // ── Tablo 9: Raspberry Pi Trend ve OEE (Samples) ────────────────────────────
@@ -143,4 +145,6 @@ model Trend {
   oee         Float?
   
   bant        Bant     @relation(fields: [bantId], references: [id])
+
+  @@unique([bantId, timestamp])
 }

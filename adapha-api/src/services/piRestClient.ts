@@ -21,15 +21,24 @@ export async function syncEvents(bantId: string, piIp: string) {
 
     for (const ev of events) {
       // type, start, end, duration_s, meta
-      await prisma.olay.create({
-        data: {
+      const tarih = ev.start ? new Date(ev.start) : new Date();
+      const tip = ev.type || "Bilinmeyen Olay";
+      await prisma.olay.upsert({
+        where: {
+          bantId_tip_tarih: { bantId, tip, tarih }
+        },
+        update: {
+          sure: ev.duration_s ? `${ev.duration_s} sn` : "Belirsiz",
+          durum: ev.end ? "Tamamlandı" : "Devam Ediyor",
+        },
+        create: {
           bantId,
-          tarih: ev.start ? new Date(ev.start) : new Date(),
+          tarih,
           sure: ev.duration_s ? `${ev.duration_s} sn` : "Belirsiz",
           birim: ev.meta?.esik_sn ? `Eşik: ${ev.meta.esik_sn}s` : "",
-          baslik: ev.type || "Bilinmeyen Olay",
+          baslik: tip,
           durum: ev.end ? "Tamamlandı" : "Devam Ediyor",
-          tip: ev.type,
+          tip,
         }
       });
     }
@@ -53,10 +62,19 @@ export async function syncSamples(bantId: string, piIp: string) {
     for (const s of samples) {
       if (s.valid === false) continue; // Hatalı verileri atla
 
-      await prisma.trend.create({
-        data: {
+      const ts = s.ts ? new Date(s.ts) : new Date();
+      await prisma.trend.upsert({
+        where: {
+          bantId_timestamp: { bantId, timestamp: ts }
+        },
+        update: {
+          hiz: Number(s.speed || 0),
+          miktar: Number(s.total || 0),
+          oee: Number(s.rate || 0),
+        },
+        create: {
           bantId,
-          timestamp: s.ts ? new Date(s.ts) : new Date(),
+          timestamp: ts,
           hiz: Number(s.speed || 0),
           miktar: Number(s.total || 0),
           oee: Number(s.rate || 0),
