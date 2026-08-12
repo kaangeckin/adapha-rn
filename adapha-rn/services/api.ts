@@ -9,6 +9,23 @@ export function normalizeDurum(d?: string): BantDurumu {
   return "BILINMIYOR";
 }
 
+// Güvenli Tarih Formatlayıcı (C5)
+export function formatTarih(isoString?: string | Date | null): string {
+  if (!isoString) return "Belirsiz";
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return "Belirsiz";
+    const aylar = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
+    const gun = d.getDate();
+    const ay = aylar[d.getMonth()];
+    const saat = d.getHours().toString().padStart(2, "0");
+    const dak = d.getMinutes().toString().padStart(2, "0");
+    return `${gun} ${ay} ${saat}:${dak}`;
+  } catch(e) {
+    return "Belirsiz";
+  }
+}
+
 export interface Bant {
   id: string;
   isim: string;

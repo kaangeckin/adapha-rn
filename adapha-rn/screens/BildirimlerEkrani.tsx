@@ -4,6 +4,7 @@ import { ChevronLeft, Bell, WifiOff, CheckCircle2, Info } from "lucide-react-nat
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { C } from "../constants/colors";
+import { formatTarih } from "../services/api";
 
 const API_URL = "http://192.168.1.187:3000/api";
 
@@ -66,7 +67,7 @@ export default function BildirimlerEkrani() {
                 <View style={{ flex: 1 }}>
                   <Text style={s.msg}>{b.mesaj}</Text>
                   <Text style={s.time}>
-                    {new Date(b.tarih).toLocaleDateString("tr-TR")} {new Date(b.tarih).toLocaleTimeString("tr-TR")}
+                    {formatTarih(b.tarih)}
                   </Text>
                 </View>
               </View>

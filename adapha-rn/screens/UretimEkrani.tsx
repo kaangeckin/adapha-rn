@@ -7,7 +7,7 @@ import { Plus, ChevronRight, Settings2, Download, CheckCircle, X } from "lucide-
 import { C } from "../constants/colors";
 import { Card, SH } from "../components/Card";
 import ModalBottomSheet from "../components/ModalBottomSheet";
-import { hizProfili, bantVerisiniCek, socket, Bant, getPiEvents, getPiSamples } from "../services/api";
+import { hizProfili, bantVerisiniCek, socket, Bant, getPiEvents, getPiSamples, formatTarih } from "../services/api";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 
@@ -279,8 +279,8 @@ export default function UretimEkrani() {
 
       {/* Parti kartları */}
       {(filtreliPartiler || []).map((b, i) => {
-        // Tarih formatı düzeltmesi
-        const tarihFormat = b.tarih ? new Date(b.tarih).toLocaleDateString("tr-TR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Belirsiz";
+        // Tarih formatı düzeltmesi (C5)
+        const tarihFormat = formatTarih(b.tarih);
 
         return (
           <View key={i} style={s.partiCard}>
@@ -332,7 +332,7 @@ export default function UretimEkrani() {
           <View style={{ gap: 12, paddingBottom: 8 }}>
             <View style={[s.infoBox, { backgroundColor: C.peachLt }]}>
               <Text style={{ fontSize: 16, fontWeight: "800", color: C.text }}>{seciliParti.baslik}</Text>
-              <Text style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{seciliParti.tarih} · {typeof seciliParti.sure === "number" ? `${seciliParti.sure.toFixed(1)} sn` : (seciliParti.sure || "Belirsiz")}</Text>
+              <Text style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{formatTarih(seciliParti.tarih)} · {typeof seciliParti.sure === "number" ? `${seciliParti.sure.toFixed(1)} sn` : (seciliParti.sure || "Belirsiz")}</Text>
             </View>
 
             {[
