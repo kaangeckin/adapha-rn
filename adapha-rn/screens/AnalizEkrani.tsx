@@ -147,7 +147,7 @@ export default function AnalizEkrani() {
             <div class="box">
               <div class="row"><span class="label">Tarih</span> <span class="val">${new Date().toLocaleString("tr-TR")}</span></div>
               <div class="row"><span class="label">Ortalama OEE Puanı</span> <span class="val">%${piOee.toFixed(2)}</span></div>
-              <div class="row"><span class="label">Toplam Üretim</span> <span class="val">${aktifToplamUretim > 0 ? aktifToplamUretim.toLocaleString("tr-TR") : "43.624"}</span></div>
+              <div class="row"><span class="label">Toplam Üretim</span> <span class="val">${aktifToplamUretim.toLocaleString("tr-TR")}</span></div>
             </div>
             <div class="box">
               <div class="row"><span class="label">Sertifikalı Ürün (%)</span> <span class="val" style="color: #2F9C95;">%${gecti}</span></div>
@@ -179,8 +179,8 @@ export default function AnalizEkrani() {
   const aktifIyiUretim = (canliBantlar || []).reduce((sum, b) => sum + (b.iyiUretim || 0), 0);
   const aktifHatali = Math.max(0, aktifToplamUretim > 0 ? (aktifToplamUretim - aktifIyiUretim) : 0);
 
-  const rawGectiPct = piOee > 0 ? piOee : (aktifToplamUretim > 0 ? (aktifIyiUretim / aktifToplamUretim) * 100 : 98.36);
-  const rawRedPct = aktifToplamUretim > 0 ? (aktifHatali / aktifToplamUretim) * 100 : 0.64;
+  const rawGectiPct = piOee > 0 ? piOee : (aktifToplamUretim > 0 ? (aktifIyiUretim / aktifToplamUretim) * 100 : 0);
+  const rawRedPct = aktifToplamUretim > 0 ? (aktifHatali / aktifToplamUretim) * 100 : 0;
 
   const gectiPct = Math.min(100, Math.max(0, rawGectiPct));
   const redPct = Math.min(100 - gectiPct, Math.max(0, rawRedPct));
@@ -238,7 +238,7 @@ export default function AnalizEkrani() {
         </View>
         <View style={[s.stat, { backgroundColor: C.mintLt }]}>
           <Text style={s.statLabel}>İyi Ürünler</Text>
-          <Text style={[s.statNum, { color: C.text }]}>{aktifIyiUretim > 0 ? aktifIyiUretim.toLocaleString("tr-TR") : "42.909"}</Text>
+          <Text style={[s.statNum, { color: C.text }]}>{aktifIyiUretim.toLocaleString("tr-TR")}</Text>
           <Text style={[s.statSub, { color: C.mint }]}>+%1,0 ↑</Text>
         </View>
       </View>
@@ -268,8 +268,8 @@ export default function AnalizEkrani() {
         ))}
         <View style={[s.grid3, { borderTopWidth: 1, borderTopColor: C.border, paddingTop: 12, marginTop: 4 }]}>
           {[
-            { label: "Sertifikalı", sub: `${aktifIyiUretim > 0 ? aktifIyiUretim.toLocaleString("tr-TR") : "42.909"} birim`, color: C.mint },
-            { label: "İncelendi", sub: `${Math.floor((aktifIyiUretim > 0 ? aktifIyiUretim : 42909) * 0.15).toLocaleString("tr-TR")} birim doğru`, color: C.blue },
+            { label: "Sertifikalı", sub: `${aktifIyiUretim.toLocaleString("tr-TR")} birim`, color: C.mint },
+            { label: "İncelendi", sub: `${Math.floor(aktifIyiUretim * 0.15).toLocaleString("tr-TR")} birim doğru`, color: C.blue },
             { label: "Aksiyon", sub: "Bu hafta 2 denetim ekle", color: C.peach },
           ].map(r => (
             <View key={r.label} style={[s.miniCard, { backgroundColor: `${r.color}18` }]}>
@@ -287,15 +287,15 @@ export default function AnalizEkrani() {
           <Text style={{ fontSize: 10, fontWeight: "700", color: C.mint }}>+%8,7 ↑</Text>
         </View>
         <Text style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>
-          Toplam Çalışma: <Text style={{ fontWeight: "700", color: C.text }}>{aktifToplamUretim > 0 ? aktifToplamUretim.toLocaleString("tr-TR") : "3.212"}</Text>
+          Toplam Çalışma: <Text style={{ fontWeight: "700", color: C.text }}>{aktifToplamUretim.toLocaleString("tr-TR")}</Text>
         </Text>
         <View style={{ height: 8, borderRadius: 99, backgroundColor: "#D8E6F0", overflow: "hidden", marginBottom: 12 }}>
           <View style={{ height: "100%", width: `${gectiPct}%`, backgroundColor: C.peach, borderRadius: 99 }} />
         </View>
         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
           {[
-            { dot: C.mint, label: "İyi Çıktı", val: `${aktifIyiUretim > 0 ? aktifIyiUretim.toLocaleString("tr-TR") : "521"}` },
-            { dot: C.lav, label: "Hatalı", val: `${aktifHatali > 0 ? aktifHatali.toLocaleString("tr-TR") : "79"}` },
+            { dot: C.mint, label: "İyi Çıktı", val: `${aktifIyiUretim.toLocaleString("tr-TR")}` },
+            { dot: C.lav, label: "Hatalı", val: `${aktifHatali.toLocaleString("tr-TR")}` },
           ].map(r => (
             <View key={r.label} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: r.dot }} />

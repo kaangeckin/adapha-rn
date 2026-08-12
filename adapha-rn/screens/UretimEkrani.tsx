@@ -114,7 +114,7 @@ export default function UretimEkrani() {
             <div class="box">
               <div class="row"><span class="label">Tarih</span> <span class="val">${new Date().toLocaleString("tr-TR")}</span></div>
               <div class="row"><span class="label">Aktif Parti Sayısı</span> <span class="val">${aktifPartiSayisi > 0 ? aktifPartiSayisi : 37}</span></div>
-              <div class="row"><span class="label">Toplam Üretim</span> <span class="val">${aktifToplamUretim > 0 ? aktifToplamUretim.toLocaleString("tr-TR") : "43.624"}</span></div>
+              <div class="row"><span class="label">Toplam Üretim</span> <span class="val">${aktifToplamUretim.toLocaleString("tr-TR")}</span></div>
             </div>
             <div class="box">
               <div class="row"><span class="label">Sertifikalı Ürün (%)</span> <span class="val" style="color: #2F9C95;">%${gecti}</span></div>
@@ -176,7 +176,7 @@ export default function UretimEkrani() {
               <Text style={s.miniTagText}>+%1,2</Text>
             </View>
           </View>
-          <Text style={s.statNum}>{aktifToplamUretim > 0 ? aktifToplamUretim.toLocaleString("tr-TR") : "43.624"}</Text>
+          <Text style={s.statNum}>{aktifToplamUretim.toLocaleString("tr-TR")}</Text>
         </View>
       </View>
 
