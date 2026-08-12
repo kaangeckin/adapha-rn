@@ -44,37 +44,7 @@ async function main() {
     });
   }
 
-  console.log('Örnek Üretim Partisi ve Kayıtlar ekleniyor...');
-  const parti1 = await prisma.uretimPartisi.create({
-    data: {
-      hatId: 'H1',
-      tip: 'Tip-M (Yetişkin Bezi)',
-      partiAdi: 'Sabah Vardiyası',
-      baslangic: new Date(new Date().setHours(8, 0, 0, 0)),
-      hedefBirim: 10000,
-      gercekBirim: 4500,
-      durum: 'devam',
-    }
-  });
-
-  await prisma.kaliteKontrol.create({
-    data: {
-      partiId: parti1.id,
-      toplamBirim: 4500,
-      iyiBirim: 4420,
-      uyariBirim: 50,
-      redBirim: 30,
-      sertifikaOrani: 98.2,
-    }
-  });
-
-  await prisma.bildirim.create({
-    data: {
-      hatId: 'H1',
-      tip: 'bilgi',
-      mesaj: 'Üretim hedefine %45 oranında ulaşıldı.',
-    }
-  });
+  console.log('Sadece temel Hat ve Bantlar eklendi, geçmiş veriler temizlendi.');
 
   console.log('✅ Seed işlemi başarıyla tamamlandı!');
 }
