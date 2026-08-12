@@ -1,10 +1,9 @@
 import { Router } from "express";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 import { reconnectMakine } from "../services/piSync";
 import { getIo } from "../index"; // io referansını almak için index.ts'den export edeceğiz
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // ── GET /api/admin/bantlar ── IP ve durum dahil bantları listele
 router.get("/bantlar", async (req, res) => {
@@ -50,7 +49,7 @@ router.put("/bant/:id/ip", async (req, res) => {
 router.get("/bildirimler", async (req, res) => {
   try {
     const bildirimler = await prisma.bildirim.findMany({
-      orderBy: { tarih: "desc" },
+      orderBy: { createdAt: "desc" },
       take: 50
     });
     res.json(bildirimler);

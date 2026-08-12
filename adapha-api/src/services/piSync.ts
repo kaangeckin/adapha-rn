@@ -1,8 +1,6 @@
 import WebSocket from "ws";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 import { Server } from "socket.io";
-
-const prisma = new PrismaClient();
 
 // Aktif bağlantıları ve reconnect deneme sayılarını takip etmek için
 const connections = new Map<string, WebSocket>();
@@ -68,7 +66,7 @@ function baglanMakineye(bantId: string, piIp: string, io: Server) {
       const yeniBildirim = await prisma.bildirim.create({
         data: { hatId: bantId, tip: 'bilgi', mesaj }
       });
-      io.emit("sistem_bildirimi", { id: yeniBildirim.id, bantId, tip: 'baglandi', mesaj, tarih: yeniBildirim.tarih });
+      io.emit("sistem_bildirimi", { id: yeniBildirim.id, bantId, tip: 'baglandi', mesaj, tarih: yeniBildirim.createdAt });
     } catch(e) {}
   });
 
@@ -123,7 +121,7 @@ function baglanMakineye(bantId: string, piIp: string, io: Server) {
       const yeniBildirim = await prisma.bildirim.create({
         data: { hatId: bantId, tip: 'hata', mesaj }
       });
-      io.emit("sistem_bildirimi", { id: yeniBildirim.id, bantId, tip: 'koptu', mesaj, tarih: yeniBildirim.tarih });
+      io.emit("sistem_bildirimi", { id: yeniBildirim.id, bantId, tip: 'koptu', mesaj, tarih: yeniBildirim.createdAt });
     } catch (e) {}
     
     let attempts = reconnectAttempts.get(bantId) || 0;

@@ -1,7 +1,5 @@
 import axios from "axios";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "../lib/prisma";
 
 // Axios instance with a timeout so we don't hang if Pi is down
 const createClient = (ip: string) => axios.create({

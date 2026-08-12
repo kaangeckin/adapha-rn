@@ -1,9 +1,8 @@
 import { Router } from "express";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 import { syncEvents, syncSamples, syncOee, getExportCsv } from "../services/piRestClient";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Yardımcı: Bant id'sine göre IP bul
 async function getPiIp(bantId: string) {

@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "./lib/prisma";
 
 import bantlarRouter from "./routes/bantlar";
 import dashboardRouter from "./routes/dashboard";
@@ -14,7 +14,6 @@ import { baslatPiSync } from "./services/piSync";
 
 const app = express();
 const httpServer = createServer(app);
-const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 
 // ── Socket.IO Kurulumu ──────────────────────────────────────────────────────
