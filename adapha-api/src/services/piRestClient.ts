@@ -98,9 +98,23 @@ export async function syncOee(bantId: string, piIp: string) {
     const oeeVal = oeeData?.oee ? oeeData.oee * 100 : 0; // 0.886 -> %88.6
     
     if (oeeVal > 0) {
-      await prisma.trend.create({
-        data: {
+      // Dakika bazında timestamp (saniye ve milisaniye sıfırla)
+      const simdi = new Date();
+      simdi.setSeconds(0, 0);
+
+      await prisma.trend.upsert({
+        where: {
+          bantId_timestamp: {
+            bantId,
+            timestamp: simdi,
+          }
+        },
+        update: {
+          oee: oeeVal,
+        },
+        create: {
           bantId,
+          timestamp: simdi,
           oee: oeeVal,
         }
       });
