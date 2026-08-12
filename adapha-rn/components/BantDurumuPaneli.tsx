@@ -5,7 +5,7 @@ import {
 } from "react-native";
 import { Activity } from "lucide-react-native";
 import { C } from "../constants/colors";
-import { Bant, bantVerisiniCek } from "../services/api";
+import { bantVerisiniCek, socket, Bant, normalizeDurum } from "../services/api";
 import { Card } from "./Card";
 import { KameraModal } from "./KameraModal";
 
@@ -61,7 +61,7 @@ export function BantDurumuPaneli() {
     return () => clearInterval(tick);
   }, []);
 
-  const acikSayisi   = bantlar.filter(b => b.durum === "CALISIYOR" || b.durum === "acik").length;
+  const acikSayisi   = bantlar.filter(b => normalizeDurum(b.durum) === "acik").length;
   const kapaliSayisi = bantlar.length - acikSayisi;
   const pct          = bantlar.length ? (acikSayisi / bantlar.length) * 100 : 0;
 
@@ -147,10 +147,10 @@ export function BantDurumuPaneli() {
 function BantSatiri({ bant, onPress }: { bant: Bant; onPress: () => void }) {
   // 60 saniye gecikme kontrolü
   const isStale = bant.sonGuncelleme ? (new Date().getTime() - new Date(bant.sonGuncelleme).getTime()) > 60000 : false;
-  const gercekDurum = isStale ? "SINYAL_YOK" : (bant.durum || "BILINMIYOR");
-  
-  const acik = gercekDurum === "CALISIYOR" || gercekDurum === "acik";
-  const durdu = gercekDurum === "DURDU" || gercekDurum === "kapali";
+  const gercekDurum = isStale ? "SINYAL_YOK" : normalizeDurum(bant.durum);
+
+  const acik = gercekDurum === "acik";
+  const durdu = gercekDurum === "kapali";
   const pingAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {

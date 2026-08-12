@@ -4,6 +4,7 @@ import { Lock, Server, Save, ChevronLeft, Wifi, WifiOff } from "lucide-react-nat
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { C } from "../constants/colors";
+import { normalizeDurum } from "../services/api";
 
 const API_URL = "http://192.168.1.187:3000/api";
 
@@ -105,7 +106,7 @@ export default function AdminEkrani() {
       
       <ScrollView contentContainerStyle={s.content}>
         {bantlar.map(bant => {
-          const acik = bant.durum === "CALISIYOR" || bant.durum === "acik";
+          const acik = normalizeDurum(bant.durum) === "acik";
           return (
             <View key={bant.id} style={s.card}>
               <View style={s.cardHeader}>

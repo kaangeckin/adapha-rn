@@ -1,6 +1,13 @@
 import { io, Socket } from "socket.io-client";
 
-export type BantDurumu = "acik" | "kapali" | "CALISIYOR" | "DURDU" | "SINYAL_YOK" | "BILINMIYOR";
+export type BantDurumu = "acik" | "kapali" | "SINYAL_YOK" | "BILINMIYOR";
+
+export function normalizeDurum(d?: string): BantDurumu {
+  if (d === "CALISIYOR" || d === "acik") return "acik";
+  if (d === "DURDU" || d === "kapali") return "kapali";
+  if (d === "SINYAL_YOK") return "SINYAL_YOK";
+  return "BILINMIYOR";
+}
 
 export interface Bant {
   id: string;
@@ -29,7 +36,8 @@ export async function bantVerisiniCek(): Promise<Bant[]> {
   try {
     const res = await fetch(`${API_URL}/bantlar`);
     if (!res.ok) throw new Error("Bantları çekerken hata oluştu");
-    return await res.json();
+    const data = await res.json();
+    return (data || []).map((b: any) => ({ ...b, durum: normalizeDurum(b.durum) }));
   } catch (error) {
     console.error("Bant verisi çekilemedi:", error);
     return [];
