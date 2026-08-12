@@ -39,6 +39,7 @@ model Bant {
   availability    Float?
   qualityOrani    Float?
   duruşSuresiSn   Float?
+  baglantiDurumu  String?            // ONLINE, SINYAL_YOK, BILINMIYOR
 
   sonGuncelleme   DateTime           @default(now())
   

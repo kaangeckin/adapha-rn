@@ -145,16 +145,17 @@ export function BantDurumuPaneli() {
 
 // ── Tek bant satırı ──────────────────────────────────────────────────────────
 function BantSatiri({ bant, onPress }: { bant: Bant; onPress: () => void }) {
-  // 60 saniye gecikme kontrolü
   const isStale = bant.sonGuncelleme ? (new Date().getTime() - new Date(bant.sonGuncelleme).getTime()) > 60000 : false;
+  const baglantiYok = bant.baglantiDurumu && bant.baglantiDurumu !== "ONLINE";
+  
   const gercekDurum = isStale ? "SINYAL_YOK" : normalizeDurum(bant.durum);
-
   const acik = gercekDurum === "acik";
   const durdu = gercekDurum === "kapali";
+  
   const pingAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    if (acik) {
+    if (acik && !baglantiYok) {
       Animated.loop(
         Animated.sequence([
           Animated.timing(pingAnim, { toValue: 2, duration: 1000, useNativeDriver: true }),
@@ -162,7 +163,7 @@ function BantSatiri({ bant, onPress }: { bant: Bant; onPress: () => void }) {
         ])
       ).start();
     }
-  }, [acik, pingAnim]);
+  }, [acik, baglantiYok, pingAnim]);
 
   const pingOpacity = pingAnim.interpolate({ inputRange: [1, 1.5, 2], outputRange: [0.25, 0.1, 0] });
 
@@ -172,7 +173,9 @@ function BantSatiri({ bant, onPress }: { bant: Bant; onPress: () => void }) {
   let textColor = C.gray;
   let statusLabel = "Sinyal Yok";
 
-  if (acik) {
+  if (baglantiYok || isStale) {
+    bgColor = "#F3F4F6"; borderColor = "#D1D5DB"; dotColor = "#9CA3AF"; textColor = "#9CA3AF"; statusLabel = bant.baglantiDurumu === "SINYAL_YOK" ? "SİNYAL YOK" : "BAĞLANTI YOK";
+  } else if (acik) {
     bgColor = C.greenLt; borderColor = "#BBF7D0"; dotColor = C.green; textColor = C.green; statusLabel = "ÇALIŞIYOR";
   } else if (durdu) {
     bgColor = C.redMd; borderColor = C.redBrd; dotColor = C.red; textColor = C.red; statusLabel = "DURDU";
@@ -198,7 +201,7 @@ function BantSatiri({ bant, onPress }: { bant: Bant; onPress: () => void }) {
         <View>
           <Text style={styles.bantIsmi}>{bant.isim}</Text>
           <Text style={[styles.bantHiz, { color: textColor }]}>
-            {acik ? `${bant.anlikHiz || bant.hiz || 0} birim/dak` : (durdu ? "Durduruldu" : "Sinyal Bekleniyor")}
+            {baglantiYok ? "Sinyal Bekleniyor" : (acik ? `${bant.anlikHiz || bant.hiz || 0} birim/dak` : "Durduruldu")}
           </Text>
         </View>
       </View>

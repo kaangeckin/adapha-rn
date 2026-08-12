@@ -100,9 +100,20 @@ function baglanMakineye(bantId: string, piIp: string, io: Server) {
         if (o.downtime_s != null)    guncellenecekVeri.duruşSuresiSn = Number(o.downtime_s);
       }
       
-      // status alanını özel tutalım, mevcut modelde "durum" var
-      if (payload.status === "DURDU") guncellenecekVeri.durum = "kapali";
-      else if (payload.status === "CALISIYOR") guncellenecekVeri.durum = "acik";
+      switch (payload.status) {
+        case "CALISIYOR":
+          guncellenecekVeri.durum = "acik";
+          guncellenecekVeri.baglantiDurumu = "ONLINE";
+          break;
+        case "DURDU":
+          guncellenecekVeri.durum = "kapali";
+          guncellenecekVeri.baglantiDurumu = "ONLINE";
+          break;
+        case "SINYAL_YOK":
+        case "BILINMIYOR":
+          guncellenecekVeri.baglantiDurumu = payload.status;
+          break;
+      }
 
       // Veritabanını güncelle
       const guncelBant = await prisma.bant.update({

@@ -39,6 +39,11 @@ export interface Bant {
   iyiUretim?: number;
   sertifikaOrani?: number;
   calismaSuresi?: number;
+  oee?: number;
+  availability?: number;
+  qualityOrani?: number;
+  duruşSuresiSn?: number;
+  baglantiDurumu?: string;
 }
 
 // ── Sunucu IP Adresi (Uygulamanın çalıştığı ağdaki bilgisayarın IP'si) ──
