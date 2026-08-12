@@ -36,6 +36,9 @@ model Bant {
   sertifikaOrani  Float?             // 98.36
   calismaSuresi   Float?             // 4.1 (saat veya dakika)
   oee             Float?             // Gerçek OEE değeri
+  availability    Float?
+  qualityOrani    Float?
+  duruşSuresiSn   Float?
 
   sonGuncelleme   DateTime           @default(now())
   

@@ -92,7 +92,13 @@ function baglanMakineye(bantId: string, piIp: string, io: Server) {
       // B1 Eklemeleri
       if (payload.model !== undefined) guncellenecekVeri.mevcutModel = String(payload.model);
       if (payload.runtime !== undefined) guncellenecekVeri.calismaSuresi = Number(payload.runtime);
-      if (payload.oee !== undefined) guncellenecekVeri.oee = Number(payload.oee);
+      if (payload.oee) {
+        const o = payload.oee;
+        if (o.oee != null)          guncellenecekVeri.oee = Number(o.oee) * 100;
+        if (o.availability != null)  guncellenecekVeri.availability = Number(o.availability) * 100;
+        if (o.quality != null)       guncellenecekVeri.qualityOrani = Number(o.quality) * 100;
+        if (o.downtime_s != null)    guncellenecekVeri.duruşSuresiSn = Number(o.downtime_s);
+      }
       
       // status alanını özel tutalım, mevcut modelde "durum" var
       if (payload.status === "DURDU") guncellenecekVeri.durum = "kapali";
