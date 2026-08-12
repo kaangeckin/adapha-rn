@@ -17,26 +17,29 @@ router.get("/bantlar", async (req, res) => {
   }
 });
 
-// ── PUT /api/admin/bant/:id/ip ── Bantın IP adresini değiştir ve yeniden bağlan
+// ── PUT /api/admin/bant/:id/ip ── Bant'ın Pi IP ve Port adresini güncelle
 router.put("/bant/:id/ip", async (req, res) => {
   const { id } = req.params;
-  const { piIpAdresi } = req.body;
-  
-  if (!piIpAdresi) {
-    return res.status(400).json({ error: "IP Adresi gerekli." });
+  const { merkezSunucuIp, merkezPort } = req.body;
+
+  if (!merkezSunucuIp) {
+    return res.status(400).json({ error: "IP adresi gereklidir." });
   }
 
   try {
     // Veritabanını güncelle
     const guncelBant = await prisma.bant.update({
       where: { id },
-      data: { piIpAdresi }
+      data: { 
+        merkezSunucuIp,
+        merkezPort: merkezPort ? Number(merkezPort) : 8000
+      }
     });
 
-    // io referansını index.ts üzerinden alıp bağlantıyı yenile
+    // Yeni IP'ye reconnect ol
     const io = getIo();
     if (io) {
-      reconnectMakine(id, piIpAdresi, io);
+      reconnectMakine(id, merkezSunucuIp, merkezPort ? Number(merkezPort) : 8000, io);
     }
 
     res.json({ success: true, bant: guncelBant });

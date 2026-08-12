@@ -7,7 +7,7 @@ const connections = new Map<string, WebSocket>();
 const reconnectAttempts = new Map<string, number>();
 const reconnectTimeouts = new Map<string, NodeJS.Timeout>();
 
-export function reconnectMakine(bantId: string, yeniIp: string, io: Server) {
+export function reconnectMakine(bantId: string, yeniIp: string, yeniPort: number, io: Server) {
   if (reconnectTimeouts.has(bantId)) {
     clearTimeout(reconnectTimeouts.get(bantId)!);
     reconnectTimeouts.delete(bantId);
@@ -19,7 +19,7 @@ export function reconnectMakine(bantId: string, yeniIp: string, io: Server) {
     connections.delete(bantId);
   }
   reconnectAttempts.set(bantId, 0);
-  baglanMakineye(bantId, yeniIp, io);
+  baglanMakineye(bantId, yeniIp, yeniPort, io);
 }
 
 /**
@@ -30,15 +30,15 @@ export async function baslatPiSync(io: Server) {
   try {
     const bantlar = await prisma.bant.findMany({
       where: {
-        piIpAdresi: { not: null }
+        merkezSunucuIp: { not: null }
       }
     });
 
     console.log(`📡 Pi Sync: ${bantlar.length} makine için bağlantı aranıyor...`);
 
     for (const bant of bantlar) {
-      if (bant.piIpAdresi) {
-        baglanMakineye(bant.id, bant.piIpAdresi, io);
+      if (bant.merkezSunucuIp) {
+        baglanMakineye(bant.id, bant.merkezSunucuIp, bant.merkezPort || 8000, io);
       }
     }
   } catch (err) {
@@ -46,11 +46,11 @@ export async function baslatPiSync(io: Server) {
   }
 }
 
-function baglanMakineye(bantId: string, piIp: string, io: Server) {
+function baglanMakineye(bantId: string, piIp: string, piPort: number, io: Server) {
   // Eğer zaten bağlıysa tekrar bağlanma
   if (connections.has(bantId)) return;
 
-  const url = `ws://${piIp}:8000/live`;
+  const url = `ws://${piIp}:${piPort}/live`;
   console.log(`🔌 [Bant ${bantId}] Makineye bağlanılıyor: ${url}`);
 
   const ws = new WebSocket(url);
@@ -149,7 +149,7 @@ function baglanMakineye(bantId: string, piIp: string, io: Server) {
     console.log(`❌ [Bant ${bantId}] Bağlantı koptu. ${delay / 1000} saniye sonra tekrar denenecek...`);
     
     reconnectAttempts.set(bantId, attempts + 1);
-    const timeoutId = setTimeout(() => baglanMakineye(bantId, piIp, io), delay);
+    const timeoutId = setTimeout(() => baglanMakineye(bantId, piIp, piPort, io), delay);
     reconnectTimeouts.set(bantId, timeoutId);
   });
 

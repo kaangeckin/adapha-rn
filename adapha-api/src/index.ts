@@ -62,8 +62,8 @@ app.get("/", (_req, res) => {
 });
 
 // ── Sunucuyu Başlat ─────────────────────────────────────────────────────────
-httpServer.listen(PORT, () => {
-  console.log(`\n🚀 Adapha API çalışıyor: http://localhost:${PORT}`);
+httpServer.listen(Number(PORT), "0.0.0.0", () => {
+  console.log(`\n🚀 Adapha API çalışıyor: http://0.0.0.0:${PORT}`);
   console.log(`📡 WebSocket dinleniyor...`);
   
   // Raspberry Pi Sync servisini başlat

@@ -29,7 +29,8 @@ model Bant {
   durum           String             @default("kapali") // acik, kapali
   anlikHiz        Float?             // birim/dakika
   kameraUrl       String?
-  piIpAdresi      String?            // "192.168.1.100" (Raspberry Pi adresi)
+  merkezSunucuIp  String?            // "192.168.1.100" (Raspberry Pi adresi)
+  merkezPort      Int?               @default(8000)
   mevcutModel     String?            // "Tip-M"
   toplamUretim    Int?               // 43624
   iyiUretim       Int?               // 42909

@@ -2,17 +2,17 @@ import axios from "axios";
 import { prisma } from "../lib/prisma";
 
 // Axios instance with a timeout so we don't hang if Pi is down
-const createClient = (ip: string) => axios.create({
-  baseURL: `http://${ip}:8000`,
+const createClient = (ip: string, port: number = 8000) => axios.create({
+  baseURL: `http://${ip}:${port}`,
   timeout: 5000,
 });
 
 /**
  * Pi'deki Olay Geçmişini çeker ve veritabanına kaydeder
  */
-export async function syncEvents(bantId: string, piIp: string) {
+export async function syncEvents(bantId: string, piIp: string, piPort: number = 8000) {
   try {
-    const api = createClient(piIp);
+    const api = createClient(piIp, piPort);
     const res = await api.get(`/machines/${bantId}/events?hours=24`);
     
     const events = Array.isArray(res.data) ? res.data : [];
@@ -50,9 +50,9 @@ export async function syncEvents(bantId: string, piIp: string) {
 /**
  * Pi'deki Trend (Samples) verisini çeker ve veritabanına kaydeder
  */
-export async function syncSamples(bantId: string, piIp: string) {
+export async function syncSamples(bantId: string, piIp: string, piPort: number = 8000) {
   try {
-    const api = createClient(piIp);
+    const api = createClient(piIp, piPort);
     const res = await api.get(`/machines/${bantId}/samples?hours=8&limit=2000`);
     
     const samples = Array.isArray(res.data) ? res.data : [];
@@ -89,9 +89,9 @@ export async function syncSamples(bantId: string, piIp: string) {
 /**
  * Pi'den anlık OEE değerini çeker (ve Trend'e yazar veya ayrı bir işlem yapar)
  */
-export async function syncOee(bantId: string, piIp: string) {
+export async function syncOee(bantId: string, piIp: string, piPort: number = 8000) {
   try {
-    const api = createClient(piIp);
+    const api = createClient(piIp, piPort);
     const res = await api.get(`/machines/${bantId}/oee`);
     
     const oeeData = res.data;
@@ -130,9 +130,9 @@ export async function syncOee(bantId: string, piIp: string) {
 /**
  * Pi'den doğrudan CSV raporunu stream/proxy etmek için kullanılabilir.
  */
-export async function getExportCsv(piIp: string) {
+export async function getExportCsv(piIp: string, piPort: number = 8000) {
   try {
-    const api = createClient(piIp);
+    const api = createClient(piIp, piPort);
     const res = await api.get("/export.csv?hours=24", { responseType: 'stream' });
     return res.data;
   } catch (err: any) {

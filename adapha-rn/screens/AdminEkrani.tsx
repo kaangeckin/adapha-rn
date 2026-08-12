@@ -4,9 +4,7 @@ import { Lock, Server, Save, ChevronLeft, Wifi, WifiOff } from "lucide-react-nat
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { C } from "../constants/colors";
-import { normalizeDurum } from "../services/api";
-
-const API_URL = "http://192.168.1.187:3000/api";
+import { normalizeDurum, API_URL } from "../services/api";
 
 export default function AdminEkrani() {
   const navigation = useNavigation<any>();
@@ -15,18 +13,26 @@ export default function AdminEkrani() {
   const [girisYapildi, setGirisYapildi] = useState(false);
   const [bantlar, setBantlar] = useState<any[]>([]);
   const [ipGirdileri, setIpGirdileri] = useState<{[key: string]: string}>({});
+  const [portGirdileri, setPortGirdileri] = useState<{[key: string]: string}>({});
 
   const fetchBantlar = async () => {
     try {
       const res = await fetch(`${API_URL}/admin/bantlar`);
+      if (!res.ok) throw new Error("Bantlar çekilemedi.");
       const data = await res.json();
+      
+      if (!Array.isArray(data)) throw new Error("API'den geçersiz veri geldi.");
+
       setBantlar(data);
       
-      const girdiler: {[key: string]: string} = {};
+      const girdilerIp: {[key: string]: string} = {};
+      const girdilerPort: {[key: string]: string} = {};
       data.forEach((b: any) => {
-        girdiler[b.id] = b.piIpAdresi || "";
+        girdilerIp[b.id] = b.merkezSunucuIp || "";
+        girdilerPort[b.id] = b.merkezPort ? b.merkezPort.toString() : "8000";
       });
-      setIpGirdileri(girdiler);
+      setIpGirdileri(girdilerIp);
+      setPortGirdileri(girdilerPort);
     } catch (e) {
       console.error(e);
       Alert.alert("Hata", "Makineler çekilemedi.");
@@ -41,11 +47,12 @@ export default function AdminEkrani() {
 
   const kaydet = async (id: string) => {
     const yeniIp = ipGirdileri[id];
+    const yeniPort = portGirdileri[id];
     try {
       const res = await fetch(`${API_URL}/admin/bant/${id}/ip`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ piIpAdresi: yeniIp })
+        body: JSON.stringify({ merkezSunucuIp: yeniIp, merkezPort: yeniPort })
       });
       if (res.ok) {
         Alert.alert("Başarılı", `${id} IP adresi güncellendi. Sistem yeniden bağlanmayı deniyor.`);
@@ -121,14 +128,22 @@ export default function AdminEkrani() {
                   {acik ? <Wifi size={14} color={C.green} /> : <WifiOff size={14} color={C.red} />}
                 </View>
               </View>
-              <Text style={s.label}>IP Adresi (IP:PORT)</Text>
+              <Text style={s.label}>IP Adresi ve Port</Text>
               <View style={s.inputRow}>
                 <TextInput
-                  style={s.ipInput}
+                  style={[s.ipInput, { flex: 2 }]}
                   value={ipGirdileri[bant.id]}
                   onChangeText={(val) => setIpGirdileri(prev => ({ ...prev, [bant.id]: val }))}
                   placeholder="192.168.1.X"
                   placeholderTextColor={C.muted}
+                />
+                <TextInput
+                  style={[s.ipInput, { flex: 1 }]}
+                  value={portGirdileri[bant.id]}
+                  onChangeText={(val) => setPortGirdileri(prev => ({ ...prev, [bant.id]: val }))}
+                  placeholder="8000"
+                  placeholderTextColor={C.muted}
+                  keyboardType="numeric"
                 />
                 <TouchableOpacity style={s.saveBtn} onPress={() => kaydet(bant.id)}>
                   <Save size={16} color="white" />

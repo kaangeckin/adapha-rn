@@ -52,6 +52,8 @@ const DEFAULT_SERVER = "http://192.168.1.187:3000";
 const serverUrl = Constants.expoConfig?.extra?.serverUrl || DEFAULT_SERVER;
 
 const API_URL = `${serverUrl}/api`;
+console.log("API URL SU AN:", API_URL);
+export { API_URL };
 export const SOCKET_URL = serverUrl;
 
 // Socket bağlantısını oluştur
