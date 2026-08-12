@@ -70,14 +70,14 @@ export async function syncSamples(bantId: string, piIp: string) {
         update: {
           hiz: Number(s.speed || 0),
           miktar: Number(s.total || 0),
-          oee: Number(s.rate || 0),
+          kaliteOrani: Number(s.rate || 0),
         },
         create: {
           bantId,
           timestamp: ts,
           hiz: Number(s.speed || 0),
           miktar: Number(s.total || 0),
-          oee: Number(s.rate || 0),
+          kaliteOrani: Number(s.rate || 0),
         }
       });
     }

@@ -172,7 +172,7 @@ export default function AnalizEkrani() {
   };
 
 
-  const buyumeData = piTrendler.length > 0 ? piTrendler.map(t => ({ value: t.oee || 50 })) : partiBuyume.map(d => ({ value: d.r }));
+  const buyumeData = piTrendler.length > 0 ? piTrendler.map(t => ({ value: t.kaliteOrani || t.oee || 50 })) : partiBuyume.map(d => ({ value: d.r }));
 
   // CANLI VERİLERDEN HESAPLAMALAR
   const aktifToplamUretim = canliBantlar.reduce((sum, b) => sum + (b.toplamUretim || 0), 0);

@@ -142,6 +142,7 @@ model Trend {
   timestamp   DateTime @default(now())
   hiz         Float?
   miktar      Int?
+  kaliteOrani Float?
   oee         Float?
   
   bant        Bant     @relation(fields: [bantId], references: [id])
