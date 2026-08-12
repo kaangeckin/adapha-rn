@@ -172,11 +172,11 @@ export default function AnalizEkrani() {
   };
 
 
-  const buyumeData = piTrendler.length > 0 ? piTrendler.map(t => ({ value: t.kaliteOrani || t.oee || 50 })) : partiBuyume.map(d => ({ value: d.r }));
+  const buyumeData = (piTrendler && piTrendler.length > 0) ? piTrendler.map(t => ({ value: t.kaliteOrani || t.oee || 50 })) : (partiBuyume || []).map(d => ({ value: d.r }));
 
   // CANLI VERİLERDEN HESAPLAMALAR
-  const aktifToplamUretim = canliBantlar.reduce((sum, b) => sum + (b.toplamUretim || 0), 0);
-  const aktifIyiUretim = canliBantlar.reduce((sum, b) => sum + (b.iyiUretim || 0), 0);
+  const aktifToplamUretim = (canliBantlar || []).reduce((sum, b) => sum + (b.toplamUretim || 0), 0);
+  const aktifIyiUretim = (canliBantlar || []).reduce((sum, b) => sum + (b.iyiUretim || 0), 0);
   const aktifHatali = Math.max(0, aktifToplamUretim > 0 ? (aktifToplamUretim - aktifIyiUretim) : 0);
 
   const rawGectiPct = piOee > 0 ? piOee : (aktifToplamUretim > 0 ? (aktifIyiUretim / aktifToplamUretim) * 100 : 98.36);
@@ -418,7 +418,7 @@ export default function AnalizEkrani() {
             <Text key={h} style={s.tableHeaderText}>{h}</Text>
           ))}
         </View>
-        {performansData.map((row: any, i: number) => {
+        {(performansData || []).map((row: any, i: number) => {
           const tagStyle =
             row.oncelik === "Acil" ? { bg: C.peachLt, color: C.peach } :
               row.oncelik === "Yüksek" ? { bg: "#EBF0FA", color: "#2E5DA8" } :

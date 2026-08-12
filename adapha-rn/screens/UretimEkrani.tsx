@@ -65,8 +65,8 @@ export default function UretimEkrani() {
     };
   }, []);
 
-  const aktifToplamUretim = canliBantlar.reduce((sum, b) => sum + (b.toplamUretim || 0), 0);
-  const aktifIyiUretim = canliBantlar.reduce((sum, b) => sum + (b.iyiUretim || 0), 0);
+  const aktifToplamUretim = (canliBantlar || []).reduce((sum, b) => sum + (b.toplamUretim || 0), 0);
+  const aktifIyiUretim = (canliBantlar || []).reduce((sum, b) => sum + (b.iyiUretim || 0), 0);
   const aktifHatali = aktifToplamUretim - aktifIyiUretim;
 
   const rawGectiPct = aktifToplamUretim > 0 ? (aktifIyiUretim / aktifToplamUretim) * 100 : 98.36;
@@ -78,8 +78,8 @@ export default function UretimEkrani() {
 
   const aktifPartiSayisi = canliBantlar.length;
 
-  const lineData1 = piTrendler.length > 0 ? piTrendler.map(t => ({ value: t.hiz })) : hizProfili.map(d => ({ value: d.hiz }));
-  const lineData2 = piTrendler.length > 0 ? piTrendler.map(t => ({ value: t.miktar })) : hizProfili.map(d => ({ value: d.miktar }));
+  const lineData1 = (piTrendler && piTrendler.length > 0) ? piTrendler.map(t => ({ value: t.hiz })) : (hizProfili || []).map(d => ({ value: d.hiz }));
+  const lineData2 = (piTrendler && piTrendler.length > 0) ? piTrendler.map(t => ({ value: t.miktar })) : (hizProfili || []).map(d => ({ value: d.miktar }));
 
   const kaliteDagilim = [
     { label: "Geçti", val: `%${gectiPct.toFixed(2)}`, pct: gectiPct, color: C.mint },
@@ -88,8 +88,8 @@ export default function UretimEkrani() {
   ];
 
   const filtreliPartiler = aktifFiltre === "Tümü"
-    ? piOlaylar
-    : piOlaylar.filter(p => p.tip === aktifFiltre);
+    ? (piOlaylar || [])
+    : (piOlaylar || []).filter(p => p.tip === aktifFiltre);
 
   const raporIndir = async () => {
     setRaporYukleniyor(true);
@@ -278,7 +278,7 @@ export default function UretimEkrani() {
       </ScrollView>
 
       {/* Parti kartları */}
-      {filtreliPartiler.map((b, i) => {
+      {(filtreliPartiler || []).map((b, i) => {
         // Tarih formatı düzeltmesi
         const tarihFormat = b.tarih ? new Date(b.tarih).toLocaleDateString("tr-TR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Belirsiz";
 

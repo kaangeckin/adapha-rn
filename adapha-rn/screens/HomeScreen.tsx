@@ -111,14 +111,14 @@ export default function HomeScreen() {
   }, []);
 
   // Grafik verisi (Zamanla API'ye bağlanacak)
-  const lineData2 = aylikUretim.map(d => ({ value: d.cikti }));
-  const lineData3 = aylikUretim.map(d => ({ value: d.iyi }));
+  const lineData2 = (aylikUretim || []).map(d => ({ value: d.cikti }));
+  const lineData3 = (aylikUretim || []).map(d => ({ value: d.iyi }));
 
   // CANLI VERİLERDEN HESAPLANAN ÖZETLER
-  const aktifToplamUretim = canliBantlar.reduce((sum, b) => sum + (b.toplamUretim || 0), 0) || ozet.toplamCikti;
-  const aktifIyiUretim = canliBantlar.reduce((sum, b) => sum + (b.iyiUretim || 0), 0);
-  const ortalamaSertifika = canliBantlar.filter(b => b.sertifikaOrani).length > 0
-    ? canliBantlar.reduce((sum, b) => sum + (b.sertifikaOrani || 0), 0) / canliBantlar.filter(b => b.sertifikaOrani).length
+  const aktifToplamUretim = (canliBantlar || []).reduce((sum, b) => sum + (b.toplamUretim || 0), 0) || ozet.toplamCikti;
+  const aktifIyiUretim = (canliBantlar || []).reduce((sum, b) => sum + (b.iyiUretim || 0), 0);
+  const ortalamaSertifika = (canliBantlar || []).filter(b => b.sertifikaOrani).length > 0
+    ? (canliBantlar || []).reduce((sum, b) => sum + (b.sertifikaOrani || 0), 0) / (canliBantlar || []).filter(b => b.sertifikaOrani).length
     : 0;
 
   const hataliUretim = Math.max(0, aktifToplamUretim > 0 ? (aktifToplamUretim - aktifIyiUretim) : 0);
@@ -170,7 +170,7 @@ export default function HomeScreen() {
       <Card>
         <SH title="Canlı Makine İzleme" action="Tümünü Gör" onAction={() => navigation.navigate("Üretim")} />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -4 }}>
-          {canliBantlar.map(m => (
+          {(canliBantlar || []).map(m => (
             <View key={m.id} style={s.machineCard}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
                 <Text style={s.machineTitle}>{m.isim}</Text>
@@ -260,7 +260,7 @@ export default function HomeScreen() {
           startOpacity2={0.22}
           endOpacity1={0}
           endOpacity2={0}
-          xAxisLabelTexts={aylikUretim.map(d => d.ay)}
+          xAxisLabelTexts={(aylikUretim || []).map(d => d.ay)}
           xAxisLabelTextStyle={{ color: C.muted, fontSize: 8 }}
           yAxisTextStyle={{ color: C.muted, fontSize: 8 }}
           hideYAxisText={false}
@@ -325,7 +325,7 @@ export default function HomeScreen() {
             <Text key={h} style={s.tableHeaderText}>{h}</Text>
           ))}
         </View>
-        {programVerisi
+        {(programVerisi || [])
           .filter(row => aktifProgramFiltre === "Tümü" || row.tip === aktifProgramFiltre)
           .map((row, i, arr) => (
             <View key={i} style={[s.tableRow, { borderBottomColor: C.border, borderBottomWidth: i < arr.length - 1 ? 1 : 0 }]}>
