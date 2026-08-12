@@ -28,15 +28,15 @@ export async function syncEvents(bantId: string, piIp: string) {
           bantId_tip_tarih: { bantId, tip, tarih }
         },
         update: {
-          sure: ev.duration_s ? `${ev.duration_s} sn` : "Belirsiz",
+          sure: ev.duration_s !== undefined ? Number(ev.duration_s) : null,
           durum: ev.end ? "Tamamlandı" : "Devam Ediyor",
         },
         create: {
           bantId,
           tarih,
-          sure: ev.duration_s ? `${ev.duration_s} sn` : "Belirsiz",
+          sure: ev.duration_s !== undefined ? Number(ev.duration_s) : null,
           birim: ev.meta?.esik_sn ? `Eşik: ${ev.meta.esik_sn}s` : "",
-          baslik: tip,
+          baslik: ev.meta?.title || ev.type || "Bilinmeyen Olay",
           durum: ev.end ? "Tamamlandı" : "Devam Ediyor",
           tip,
         }

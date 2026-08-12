@@ -286,7 +286,7 @@ export default function UretimEkrani() {
           <View key={i} style={s.partiCard}>
             <View style={[s.partiTop, { backgroundColor: C.peachLt }]}>
               <Text style={s.partiMeta}>{tarihFormat}</Text>
-              <Text style={s.partiMeta}>{b.sure}</Text>
+              <Text style={s.partiMeta}>{typeof b.sure === "number" ? `${b.sure.toFixed(1)} sn` : (b.sure || "Belirsiz")}</Text>
               <Text style={s.partiMeta}>{b.birim}</Text>
             </View>
             <View style={s.partiBottom}>
@@ -332,7 +332,7 @@ export default function UretimEkrani() {
           <View style={{ gap: 12, paddingBottom: 8 }}>
             <View style={[s.infoBox, { backgroundColor: C.peachLt }]}>
               <Text style={{ fontSize: 16, fontWeight: "800", color: C.text }}>{seciliParti.baslik}</Text>
-              <Text style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{seciliParti.tarih} · {seciliParti.sure}</Text>
+              <Text style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{seciliParti.tarih} · {typeof seciliParti.sure === "number" ? `${seciliParti.sure.toFixed(1)} sn` : (seciliParti.sure || "Belirsiz")}</Text>
             </View>
 
             {[

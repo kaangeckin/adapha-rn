@@ -124,7 +124,7 @@ model Olay {
   id          Int      @id @default(autoincrement())
   bantId      String
   tarih       DateTime @default(now())
-  sure        String?
+  sure        Float?
   birim       String?
   baslik      String?
   durum       String?
