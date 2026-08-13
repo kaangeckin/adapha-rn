@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, ActivityIndicator
+  View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, ActivityIndicator, Animated, Easing, Image
 } from "react-native";
+import { WebView } from "react-native-webview";
 import { LineChart } from "react-native-gifted-charts";
 import {
   Zap, Package, Clock, ChevronRight, Shield, Search, Plus,
@@ -12,6 +13,7 @@ import { Card, SH } from "../components/Card";
 import { BantDurumuPaneli } from "../components/BantDurumuPaneli";
 import ModalBottomSheet from "../components/ModalBottomSheet";
 import { hizProfili, aylikUretim, programVerisi, dashboardOzetiniCek, bantVerisiniCek, socket, Bant } from "../services/api";
+import { ChevronLeft } from "lucide-react-native";
 
 const W = Dimensions.get("window").width;
 
@@ -49,12 +51,128 @@ function SvgGauge({ value = 0 }: { value?: number }) {
   );
 }
 
+function SimulasyonEkrani({ acik, kameraUrl, slideX }: { acik: boolean; kameraUrl?: string; slideX: Animated.AnimatedInterpolation<number> }) {
+  return (
+    <View style={s.simContainer}>
+      <View style={StyleSheet.absoluteFill}>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <View key={`h${i}`} style={[s.gridLine, { top: i * 20, width: "100%" }]} />
+        ))}
+        {Array.from({ length: 18 }).map((_, i) => (
+          <View key={`v${i}`} style={[s.gridLine, { left: i * 20, height: "100%", width: 1 }]} />
+        ))}
+      </View>
+      <View style={s.beltOuter}>
+        <View style={[s.belt, { backgroundColor: acik ? "#1A3A5C" : "#2A0A0A", borderColor: acik ? "transparent" : C.red }]}>
+          {acik ? (
+            <View style={StyleSheet.absoluteFill}>
+              <Animated.View style={[s.stripe, { transform: [{ translateX: slideX }] }]} />
+            </View>
+          ) : (
+            <Text style={[s.beltText, { color: C.red }]}>DURDU</Text>
+          )}
+        </View>
+        <Text style={[s.beltStatus, { color: acik ? C.green : C.red }]}>
+          {acik ? "● BANT HAREKETLİ" : "● BANT DURDU"}
+        </Text>
+      </View>
+      <View style={s.connInfo}>
+        <Text style={s.connText}>Kamera bağlantısı bekleniyor</Text>
+        <Text style={s.connUrl}>{kameraUrl}</Text>
+      </View>
+    </View>
+  );
+}
+
+function KameraKarti({ bant }: { bant: Bant }) {
+  const acik = bant.durum === "acik";
+  const pulseAnim = React.useRef(new Animated.Value(1)).current;
+  const slideAnim = React.useRef(new Animated.Value(0)).current;
+
+  // Sadece istendiğinde fotoğrafı tutacak state
+  const [aktifFoto, setAktifFoto] = React.useState<string | null>(null);
+
+  // Butona basınca o anki zaman damgası ile benzersiz bir URL oluşturup resmi çeker (cache engeller)
+  const fotografIste = () => {
+    if (bant.kameraUrl) {
+      setAktifFoto(`${bant.kameraUrl}?t=${Date.now()}`);
+    }
+  };
+
+  React.useEffect(() => {
+    if (acik) {
+      Animated.loop(
+        Animated.timing(slideAnim, {
+          toValue: 1, duration: 1200, easing: Easing.linear, useNativeDriver: true,
+        })
+      ).start();
+    }
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.0, duration: 700, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [acik]);
+
+  const slideX = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [-40, 300] });
+
+  return (
+    <Card>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <Text style={s.cardTitle}>Anlık Kontrol</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {aktifFoto && (
+            <TouchableOpacity onPress={fotografIste} style={{ backgroundColor: C.peach, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+              <Text style={{ fontSize: 10, fontWeight: "700", color: "white" }}>Yenile</Text>
+            </TouchableOpacity>
+          )}
+          <View style={{ backgroundColor: acik ? "rgba(76, 217, 100, 0.1)" : "rgba(255, 59, 48, 0.1)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+            <Text style={{ fontSize: 10, fontWeight: "600", color: acik ? C.green : C.red }}>{bant.id}-CAM</Text>
+          </View>
+        </View>
+      </View>
+      
+      <View style={s.cameraArea}>
+        {aktifFoto ? (
+          <Image
+            source={{ uri: aktifFoto }}
+            style={s.webview}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={[s.simContainer, { paddingHorizontal: 24 }]}>
+            {bant.kameraUrl ? (
+              <>
+                <TouchableOpacity onPress={fotografIste} style={{ backgroundColor: C.peach, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16 }}>
+                  <Text style={{ color: "white", fontSize: 13, fontWeight: "700" }}>Anlık Görüntü Al</Text>
+                </TouchableOpacity>
+                <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, textAlign: "center", marginTop: 12 }}>
+                  Sürekli akış yerine, sadece ihtiyaç duyduğunuzda kameradan o anki taze fotoğrafı çekebilirsiniz.
+                </Text>
+              </>
+            ) : (
+              <SimulasyonEkrani acik={acik} kameraUrl={bant.kameraUrl} slideX={slideX} />
+            )}
+          </View>
+        )}
+
+        <View style={s.liveBadge}>
+          <Animated.View style={[s.liveDot, { backgroundColor: acik ? C.green : C.red, opacity: pulseAnim }]} />
+          <Text style={s.liveText}>{acik ? "CANLI" : "ÇEVRİMDIŞI"}</Text>
+        </View>
+      </View>
+    </Card>
+  );
+}
+
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const [ozet, setOzet] = useState({ aktifHatSayisi: 0, toplamCikti: 0, anlikHizOrta: 0 });
-  const [canliBantlar, setCanliBantlar] = useState<Bant[]>([]);
+  const [bantlar, setBantlar] = useState<Bant[]>([]);
   const [loading, setLoading] = useState(true);
   const [aktifProgramFiltre, setAktifProgramFiltre] = useState("Tümü");
+  const [seciliBant, setSeciliBant] = useState<Bant | null>(null);
 
   useEffect(() => {
     // 1. İlk yüklemede API'den gerçek veriyi çek
@@ -64,7 +182,7 @@ export default function HomeScreen() {
         bantVerisiniCek()
       ]);
       setOzet(ozetVeri);
-      setCanliBantlar(bantVeri.filter(b => b.durum === "acik").slice(0, 3)); // İlk 3 açık bant
+      setBantlar(bantVeri);
       setLoading(false);
     };
 
@@ -72,18 +190,22 @@ export default function HomeScreen() {
 
     // 2. WebSocket üzerinden anlık hız güncellemelerini (Simülatör) dinle
     socket.on("bant_hiz_guncelleme", (guncellemeler: { id: string, anlikHiz: number }[]) => {
-      setCanliBantlar(prev => {
+      setBantlar(prev => {
         let hizToplami = 0;
+        let acikSayisi = 0;
         const yeniBantlar = prev.map(bant => {
           const guncel = guncellemeler.find(g => g.id === bant.id);
           const yeniHiz = guncel ? guncel.anlikHiz : bant.anlikHiz;
-          hizToplami += (yeniHiz || 0);
+          if (bant.durum === "acik") {
+            hizToplami += (yeniHiz || 0);
+            acikSayisi++;
+          }
           return { ...bant, anlikHiz: yeniHiz };
         });
 
         // Ortalama hızı da canlı güncelle
-        if (yeniBantlar.length > 0) {
-          setOzet(eski => ({ ...eski, anlikHizOrta: hizToplami / yeniBantlar.length }));
+        if (acikSayisi > 0) {
+          setOzet(eski => ({ ...eski, anlikHizOrta: hizToplami / acikSayisi }));
         }
 
         return yeniBantlar;
@@ -92,12 +214,12 @@ export default function HomeScreen() {
 
     // 3. Gerçek Raspberry Pi'den gelen full güncellemeleri dinle
     socket.on("bant_guncellendi", (guncelBant: Bant) => {
-      setCanliBantlar(prev => {
+      setBantlar(prev => {
         const kopya = [...prev];
         const idx = kopya.findIndex(b => b.id === guncelBant.id);
         if (idx !== -1) {
           kopya[idx] = { ...kopya[idx], ...guncelBant };
-        } else if (guncelBant.durum === "acik") {
+        } else {
           kopya.push(guncelBant);
         }
         return kopya;
@@ -110,101 +232,154 @@ export default function HomeScreen() {
     };
   }, []);
 
+  if (loading) {
+    return <View style={[s.scroll, { justifyContent: "center", alignItems: "center" }]}><ActivityIndicator color={C.peach} /></View>;
+  }
+
+  const guncelSeciliBant = seciliBant ? bantlar.find(b => b.id === seciliBant.id) || seciliBant : null;
+
+  // EĞER BİR BANT SEÇİLİ DEĞİLSE SADECE LİSTEYİ GÖSTER
+  if (!guncelSeciliBant) {
+    return (
+      <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+        <View style={s.hero}>
+          <View style={{ zIndex: 1 }}>
+            <Text style={s.heroDate}>{new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
+            <Text style={s.heroTitle}>Tesis Genel Bakış</Text>
+            <Text style={s.heroSub}>Jiangsu JWC Machinery Co., Ltd</Text>
+          </View>
+          <View style={s.heroBubble1} />
+          <View style={s.heroBubble2} />
+        </View>
+
+        <Text style={[s.cardTitle, { marginTop: 8, marginBottom: 4, paddingHorizontal: 4 }]}>Üretim Bantları</Text>
+        
+        <View style={{ gap: 12 }}>
+          {bantlar.map(m => (
+            <TouchableOpacity key={m.id} style={s.machineCardWide} onPress={() => setSeciliBant(m)}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
+                <Text style={s.machineTitleWide}>{m.isim}</Text>
+                <ChevronRight size={18} color={C.peach} />
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
+                <View style={[s.dot, { backgroundColor: m.durum === "acik" ? C.mint : C.muted }]} />
+                <Text style={[s.machineLive, { color: m.durum === "acik" ? C.mint : C.muted }]}>
+                  {m.durum === "acik" ? "Çalışıyor" : "Pasif"}
+                </Text>
+              </View>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 4, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.border }}>
+                <View>
+                  <Text style={{ fontSize: 10, color: C.muted, marginBottom: 2 }}>Anlık Hız</Text>
+                  <Text style={s.machineRateWide}>{m.anlikHiz?.toFixed(1) || 0} b/s</Text>
+                </View>
+                <View style={{ alignItems: "flex-end" }}>
+                  <Text style={{ fontSize: 10, color: C.muted, marginBottom: 2 }}>Üretim</Text>
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: C.text }}>{(m.toplamUretim || 0).toLocaleString("tr-TR")}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+    );
+  }
+
+  // BİR BANT SEÇİLİ İSE SADECE ONUN DETAYLARINI GÖSTER
   // Grafik verisi (Zamanla API'ye bağlanacak)
   const lineData2 = (aylikUretim || []).map(d => ({ value: d.cikti }));
   const lineData3 = (aylikUretim || []).map(d => ({ value: d.iyi }));
 
   // CANLI VERİLERDEN HESAPLANAN ÖZETLER
-  const aktifToplamUretim = (canliBantlar || []).reduce((sum, b) => sum + (b.toplamUretim || 0), 0) || ozet.toplamCikti;
-  const aktifIyiUretim = (canliBantlar || []).reduce((sum, b) => sum + (b.iyiUretim || 0), 0);
-  const ortalamaSertifika = (canliBantlar || []).filter(b => b.sertifikaOrani).length > 0
-    ? (canliBantlar || []).reduce((sum, b) => sum + (b.sertifikaOrani || 0), 0) / (canliBantlar || []).filter(b => b.sertifikaOrani).length
-    : 0;
+  const aktifToplamUretim = guncelSeciliBant.toplamUretim || 0;
+  const aktifIyiUretim = guncelSeciliBant.iyiUretim || 0;
+  const ortalamaSertifika = guncelSeciliBant.sertifikaOrani || 0;
 
   const hataliUretim = Math.max(0, aktifToplamUretim > 0 ? (aktifToplamUretim - aktifIyiUretim) : 0);
   const rawHataOrani = aktifToplamUretim > 0 ? (hataliUretim / aktifToplamUretim * 100) : 0;
   const hataOrani = Math.min(100, Math.max(0, rawHataOrani));
 
-  if (loading) {
-    return <View style={[s.scroll, { justifyContent: "center", alignItems: "center" }]}><ActivityIndicator color={C.peach} /></View>;
-  }
-
   return (
     <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+
+      <TouchableOpacity style={s.backBtn} onPress={() => setSeciliBant(null)}>
+        <ChevronLeft size={20} color={C.peach} />
+        <Text style={s.backBtnText}>Tüm Bantlara Dön</Text>
+      </TouchableOpacity>
 
       {/* Hero */}
       <View style={s.hero}>
         <View style={{ zIndex: 1 }}>
           <Text style={s.heroDate}>{new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
-          <Text style={s.heroTitle}>Makine Genel Bakış</Text>
-          <Text style={s.heroSub}>Jiangsu JWC Machinery Co., Ltd</Text>
+          <Text style={s.heroTitle}>{guncelSeciliBant.isim} Detayları</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
+            <Text style={[s.heroSub, { marginTop: 0 }]}>Anlık İzleme Paneli</Text>
+            {guncelSeciliBant.mevcutModel ? (
+              <View style={{ backgroundColor: "rgba(255,255,255,0.25)", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                <Text style={{ fontSize: 10, color: "white", fontWeight: "800" }}>Model: {guncelSeciliBant.mevcutModel}</Text>
+              </View>
+            ) : (
+              <View style={{ backgroundColor: "rgba(255,255,255,0.15)", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", fontWeight: "600" }}>Model: Bekleniyor...</Text>
+              </View>
+            )}
+          </View>
         </View>
         <View style={s.heroBubble1} />
         <View style={s.heroBubble2} />
       </View>
 
-      {/* Stat kutucukları (GERÇEK VERİ) */}
+      {/* Stat kutucukları */}
       <View style={s.statRow}>
-        <View style={[s.stat, { backgroundColor: C.mintLt }]}>
+        <View style={[s.stat, { backgroundColor: guncelSeciliBant.durum === "acik" ? C.mintLt : C.peachLt }]}>
           <View style={s.statDotRow}>
-            <View style={[s.dot, { backgroundColor: C.mint }]} />
-            <Text style={s.statLabel}>Aktif Hatlar</Text>
+            <View style={[s.dot, { backgroundColor: guncelSeciliBant.durum === "acik" ? C.mint : C.peach }]} />
+            <Text style={s.statLabel}>Durum</Text>
           </View>
-          <Text style={[s.statNum, { color: C.text }]}>{ozet.aktifHatSayisi}</Text>
-          <Text style={[s.statSub, { color: C.mint }]}>● Şu An Çalışıyor</Text>
+          <Text style={[s.statNum, { color: C.text, fontSize: 18, marginTop: 4 }]}>{guncelSeciliBant.durum === "acik" ? "Çalışıyor" : "Pasif"}</Text>
         </View>
         <View style={[s.stat, { backgroundColor: C.blueLt }]}>
           <View style={s.statDotRow}>
             <Package size={11} color={C.blue} />
             <Text style={s.statLabel}>Toplam Çıktı</Text>
           </View>
-          <Text style={[s.statNum, { color: C.text }]}>{aktifToplamUretim.toLocaleString("tr-TR")}</Text>
-          <Text style={[s.statSub, { color: C.blue }]}>+2,1% ↑</Text>
+          <Text style={[s.statNum, { color: C.text, fontSize: 18, marginTop: 4 }]}>{aktifToplamUretim.toLocaleString("tr-TR")}</Text>
         </View>
       </View>
 
-      {/* Bant Durumu */}
-      <BantDurumuPaneli />
+      {/* Canlı Kamera Akışı */}
+      <KameraKarti bant={guncelSeciliBant} />
 
-      {/* Canlı İzleme (GERÇEK VERİ VE WEBSOCKET) */}
       <Card>
-        <SH title="Canlı Makine İzleme" action="Tümünü Gör" onAction={() => navigation.navigate("Üretim")} />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -4 }}>
-          {(canliBantlar || []).map(m => (
-            <View key={m.id} style={s.machineCard}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
-                <Text style={s.machineTitle}>{m.isim}</Text>
-                <ChevronRight size={11} color={C.peach} />
-              </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 6 }}>
-                <View style={[s.dot, { backgroundColor: C.mint }]} />
-                <Text style={[s.machineLive, { color: C.mint }]}>Canlı</Text>
-              </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 6 }}>
-                <Clock size={8} color={C.muted} />
-                <Text style={s.machineTime}>09:00 – 17:00</Text>
-              </View>
-              <Text style={s.machineRate}>{m.anlikHiz?.toFixed(1) || 0} b/s</Text>
-            </View>
-          ))}
-        </ScrollView>
-        {/* Hız göstergesi (CANLI VERİ) */}
         <View style={s.gaugeBox}>
-          <Text style={s.gaugeLabel}>Ortalama Anlık Hız</Text>
-          <SvgGauge value={ozet.anlikHizOrta} />
+          <Text style={s.gaugeLabel}>Anlık Hız</Text>
+          <SvgGauge value={guncelSeciliBant.anlikHiz || 0} />
         </View>
       </Card>
 
-      {/* Makine Performansı */}
+      {/* Makine Performansı (Sayısal Görünüm) */}
       <Card>
-        <SH title="Makine Performansı" action="Detaylar" />
-        <View style={s.perfRow}>
-          <Text style={s.perfLabel}>En Yaygın Hata</Text>
-          <Text style={s.perfVal}>Yüzey Çizimi (Bekleniyor)</Text>
-        </View>
-        <View style={s.perfRow}>
-          <Text style={s.perfLabel}>Hata Oranı</Text>
-          <Text style={[s.perfVal, { color: C.peach }]}>%{hataOrani.toFixed(2)}</Text>
+        <SH title="Makine Performansı" />
+        
+        <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
+          <View style={{ width: "47%", backgroundColor: C.mintLt, padding: 12, borderRadius: 12 }}>
+            <Text style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>OEE Puanı</Text>
+            <Text style={{ fontSize: 18, fontWeight: "800", color: C.mint }}>{guncelSeciliBant.oee ? guncelSeciliBant.oee.toFixed(1) : "0"}</Text>
+          </View>
+          
+          <View style={{ width: "47%", backgroundColor: C.blueLt, padding: 12, borderRadius: 12 }}>
+            <Text style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>Kullanılabilirlik</Text>
+            <Text style={{ fontSize: 18, fontWeight: "800", color: C.blue }}>{guncelSeciliBant.availability ? guncelSeciliBant.availability.toFixed(1) : "0"}</Text>
+          </View>
+
+          <View style={{ width: "47%", backgroundColor: C.peachLt, padding: 12, borderRadius: 12 }}>
+            <Text style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>Duruş Süresi</Text>
+            <Text style={{ fontSize: 18, fontWeight: "800", color: C.peach }}>{guncelSeciliBant.duruşSuresiSn ? guncelSeciliBant.duruşSuresiSn.toFixed(0) : "0"} <Text style={{ fontSize: 12, fontWeight: "600" }}>sn</Text></Text>
+          </View>
+          
+          <View style={{ width: "47%", backgroundColor: C.bg, borderWidth: 1, borderColor: C.border, padding: 12, borderRadius: 12 }}>
+            <Text style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>Çalışma Süresi</Text>
+            <Text style={{ fontSize: 18, fontWeight: "800", color: C.text }}>{guncelSeciliBant.calismaSuresi ? guncelSeciliBant.calismaSuresi.toFixed(1) : "0"} <Text style={{ fontSize: 12, fontWeight: "600" }}>dk</Text></Text>
+          </View>
         </View>
       </Card>
 
@@ -225,52 +400,6 @@ export default function HomeScreen() {
             <Text style={[s.badgeText, { color: C.peach }]}>%{hataOrani.toFixed(2)}</Text>
           </View>
         </View>
-      </Card>
-
-      {/* Aylık Üretim Grafiği */}
-      <Card>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-          <Text style={s.cardTitle}>Üretim Oranı - İyi Oran</Text>
-          <View style={[s.badge, { backgroundColor: C.peachLt }]}>
-            <Text style={[s.badgeText, { color: C.peach }]}>Aylık</Text>
-          </View>
-        </View>
-        <Text style={[s.perfLabel, { marginBottom: 12 }]}>Sertifika Oranı (Canlı): <Text style={[s.perfVal, { color: C.text }]}>%{ortalamaSertifika.toFixed(2)}</Text></Text>
-        <View style={{ flexDirection: "row", gap: 16, marginBottom: 8 }}>
-          {[{ c: C.blue, l: "Çıktı" }, { c: C.mint, l: "İyi" }].map(({ c, l }) => (
-            <View key={l} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <View style={{ width: 16, height: 2, backgroundColor: c, borderRadius: 1 }} />
-              <Text style={[s.perfLabel]}>{l}</Text>
-            </View>
-          ))}
-        </View>
-        <LineChart
-          data={lineData2}
-          data2={lineData3}
-          width={W - 80}
-          height={100}
-          color1={C.blue}
-          color2={C.mint}
-          thickness={2}
-          hideDataPoints
-          areaChart
-          startFillColor1={C.blue}
-          startFillColor2={C.mint}
-          startOpacity1={0.22}
-          startOpacity2={0.22}
-          endOpacity1={0}
-          endOpacity2={0}
-          xAxisLabelTexts={(aylikUretim || []).map(d => d.ay)}
-          xAxisLabelTextStyle={{ color: C.muted, fontSize: 8 }}
-          yAxisTextStyle={{ color: C.muted, fontSize: 8 }}
-          hideYAxisText={false}
-          rulesColor="transparent"
-          xAxisColor="transparent"
-          yAxisColor="transparent"
-          noOfSections={4}
-          initialSpacing={8}
-          endSpacing={8}
-        />
       </Card>
 
       {/* Üretim Özeti */}
@@ -305,39 +434,6 @@ export default function HomeScreen() {
           </View>
         ))}
       </Card>
-
-      {/* Üretim Programı */}
-      <Card>
-        <SH title="Üretim Programı" />
-        <View style={[s.searchBar, { backgroundColor: C.blueLt }]}>
-          <Search size={12} color={C.muted} />
-          <Text style={s.searchText}>Program ara...</Text>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-          {["Tümü", "Tip-M", "Tip-A", "Tip-B"].map((f) => (
-            <TouchableOpacity key={f} onPress={() => setAktifProgramFiltre(f)} style={[s.chip, aktifProgramFiltre === f ? { backgroundColor: C.peach } : { backgroundColor: C.blueLt }]}>
-              <Text style={[s.chipText, { color: aktifProgramFiltre === f ? "white" : C.muted }]}>{f}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-        <View style={[s.tableHeader, { borderBottomColor: C.border }]}>
-          {["Parti", "Hat", "Tip", "Başlangıç"].map(h => (
-            <Text key={h} style={s.tableHeaderText}>{h}</Text>
-          ))}
-        </View>
-        {(programVerisi || [])
-          .filter(row => aktifProgramFiltre === "Tümü" || row.tip === aktifProgramFiltre)
-          .map((row, i, arr) => (
-            <View key={i} style={[s.tableRow, { borderBottomColor: C.border, borderBottomWidth: i < arr.length - 1 ? 1 : 0 }]}>
-              <Text style={s.tableCell}>{row.parti}</Text>
-              <Text style={s.tableCell}>{row.hat}</Text>
-              <Text style={s.tableCell}>{row.tip}</Text>
-              <Text style={[s.tableCell, { color: C.muted }]}>{row.saat}</Text>
-            </View>
-          ))}
-      </Card>
-
-
 
     </ScrollView>
   );
@@ -398,4 +494,27 @@ const s = StyleSheet.create({
   tableHeaderText: { flex: 1, fontSize: 8.5, fontWeight: "700", textTransform: "uppercase", color: C.muted },
   tableRow: { flexDirection: "row", paddingVertical: 8, alignItems: "center" },
   tableCell: { flex: 1, fontSize: 10, color: C.text },
+  machineCardWide: { borderRadius: 16, padding: 16, backgroundColor: "white", borderWidth: 1, borderColor: C.border, shadowColor: "#000", shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
+  machineTitleWide: { fontSize: 14, fontWeight: "700", color: C.text },
+  machineTimeWide: { fontSize: 11, color: C.muted },
+  machineRateWide: { fontSize: 18, fontWeight: "800", color: C.peach },
+  backBtn: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12, paddingVertical: 4 },
+  backBtnText: { fontSize: 14, fontWeight: "600", color: C.peach },
+
+  // Kamera Stilleri
+  cameraArea: { aspectRatio: 16/9, backgroundColor: "#050D18", borderRadius: 12, overflow: "hidden", position: "relative" },
+  webview: { flex: 1 },
+  liveBadge: { position: "absolute", top: 8, left: 8, flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 99 },
+  liveDot: { width: 6, height: 6, borderRadius: 3 },
+  liveText: { fontSize: 9, fontWeight: "700", color: "white" },
+  simContainer: { flex: 1, backgroundColor: "#070F1C", justifyContent: "center", alignItems: "center" },
+  gridLine: { position: "absolute", backgroundColor: "rgba(255,255,255,0.03)" },
+  beltOuter: { alignItems: "center", width: "100%" },
+  belt: { width: "80%", height: 40, borderRadius: 4, overflow: "hidden", justifyContent: "center", alignItems: "center", borderWidth: 1, marginBottom: 8 },
+  stripe: { position: "absolute", top: 0, bottom: 0, width: 6, backgroundColor: "rgba(255,255,255,0.3)" },
+  beltText: { fontSize: 11, fontWeight: "700" },
+  beltStatus: { fontSize: 9, fontWeight: "700" },
+  connInfo: { position: "absolute", bottom: 8, left: 0, right: 0, alignItems: "center" },
+  connText: { fontSize: 8, color: "rgba(255,255,255,0.5)" },
+  connUrl: { fontSize: 7.5, color: "rgba(255,255,255,0.35)" },
 });

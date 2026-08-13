@@ -69,8 +69,8 @@ export default function UretimEkrani() {
   const aktifIyiUretim = (canliBantlar || []).reduce((sum, b) => sum + (b.iyiUretim || 0), 0);
   const aktifHatali = aktifToplamUretim - aktifIyiUretim;
 
-  const rawGectiPct = aktifToplamUretim > 0 ? (aktifIyiUretim / aktifToplamUretim) * 100 : 98.36;
-  const rawRedPct = aktifToplamUretim > 0 ? (aktifHatali / aktifToplamUretim) * 100 : 0.64;
+  const rawGectiPct = aktifToplamUretim > 0 ? (aktifIyiUretim / aktifToplamUretim) * 100 : 0;
+  const rawRedPct = aktifToplamUretim > 0 ? (aktifHatali / aktifToplamUretim) * 100 : 0;
 
   const gectiPct = Math.min(100, Math.max(0, rawGectiPct));
   const redPct = Math.min(100 - gectiPct, Math.max(0, rawRedPct));
@@ -78,8 +78,9 @@ export default function UretimEkrani() {
 
   const aktifPartiSayisi = canliBantlar.length;
 
-  const lineData1 = (piTrendler && piTrendler.length > 0) ? piTrendler.map(t => ({ value: t.hiz })) : (hizProfili || []).map(d => ({ value: d.hiz }));
-  const lineData2 = (piTrendler && piTrendler.length > 0) ? piTrendler.map(t => ({ value: t.miktar })) : (hizProfili || []).map(d => ({ value: d.miktar }));
+  const aktifModeller = Array.from(new Set(canliBantlar.map(b => b.mevcutModel).filter(Boolean)));
+  const modelFiltreleri = ["Tümü", ...aktifModeller];
+
 
   const kaliteDagilim = [
     { label: "Geçti", val: `%${gectiPct.toFixed(2)}`, pct: gectiPct, color: C.mint },
@@ -113,7 +114,7 @@ export default function UretimEkrani() {
             <h1>Adapha Üretim Raporu</h1>
             <div class="box">
               <div class="row"><span class="label">Tarih</span> <span class="val">${new Date().toLocaleString("tr-TR")}</span></div>
-              <div class="row"><span class="label">Aktif Parti Sayısı</span> <span class="val">${aktifPartiSayisi > 0 ? aktifPartiSayisi : 37}</span></div>
+              <div class="row"><span class="label">Aktif Parti Sayısı</span> <span class="val">${aktifPartiSayisi}</span></div>
               <div class="row"><span class="label">Toplam Üretim</span> <span class="val">${aktifToplamUretim.toLocaleString("tr-TR")}</span></div>
             </div>
             <div class="box">
@@ -167,7 +168,7 @@ export default function UretimEkrani() {
               <Text style={s.miniTagText}>+%3,2</Text>
             </View>
           </View>
-          <Text style={s.statNum}>{aktifPartiSayisi > 0 ? aktifPartiSayisi : 37}</Text>
+          <Text style={s.statNum}>{aktifPartiSayisi}</Text>
         </View>
         <View style={[s.stat, { backgroundColor: C.mintLt }]}>
           <View style={s.statTopRow}>
@@ -180,56 +181,29 @@ export default function UretimEkrani() {
         </View>
       </View>
 
-      {/* Hız & Kalite Profili */}
+      {/* Aktif Modeller */}
       <Card>
-        <SH title="Hız & Kalite Profili" action="Rapor İndir" onAction={raporIndir} />
+        <SH title="Aktif Modeller" action="Rapor İndir" onAction={raporIndir} />
         {raporYukleniyor && (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10, backgroundColor: C.blueLt, padding: 10, borderRadius: 12 }}>
             <ActivityIndicator size="small" color={C.blue} />
             <Text style={{ fontSize: 11, color: C.blue }}>Rapor hazırlanıyor...</Text>
           </View>
         )}
-        <View style={{ flexDirection: "row", gap: 16, marginBottom: 12 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-            <View style={{ width: 16, height: 2, backgroundColor: C.peach, borderRadius: 1 }} />
-            <Text style={{ fontSize: 9, color: C.muted }}>Hız (b/dak)</Text>
+        
+        {aktifModeller.length > 0 ? (
+          <View style={[s.typeGrid, { marginTop: 4 }]}>
+            {aktifModeller.map((mod, index) => (
+              <View key={String(mod)} style={{ flexDirection: "row", alignItems: "center", gap: 6, width: "48%", marginBottom: 6 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: [C.peach, C.blue, C.mint, C.lav][index % 4] }} />
+                <Text style={{ fontSize: 10, color: C.muted }}>Model: {mod}</Text>
+                <Text style={{ fontSize: 10, fontWeight: "700", color: C.text, marginLeft: "auto" }}>Aktif</Text>
+              </View>
+            ))}
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-            <View style={{ width: 16, height: 2, backgroundColor: C.mint, borderRadius: 1 }} />
-            <Text style={{ fontSize: 9, color: C.muted }}>Kalite Çıktısı</Text>
-          </View>
-        </View>
-        <LineChart
-          data={lineData1}
-          data2={lineData2}
-          width={W - 80}
-          height={120}
-          color1={C.peach}
-          color2={C.mint}
-          thickness={2}
-          hideDataPoints
-          rulesColor="transparent"
-          xAxisColor="transparent"
-          yAxisColor="transparent"
-          xAxisLabelTextStyle={{ color: C.muted, fontSize: 8 }}
-          yAxisTextStyle={{ color: C.muted, fontSize: 8 }}
-          initialSpacing={8}
-          endSpacing={8}
-        />
-        <View style={[s.typeGrid, { borderTopWidth: 1, borderTopColor: C.border, marginTop: 12, paddingTop: 12 }]}>
-          {[
-            { label: "Tip-M", pct: "%45", color: C.peach },
-            { label: "Tip-A", pct: "%25", color: C.blue },
-            { label: "Tip-B", pct: "%20", color: C.mint },
-            { label: "Tip-C", pct: "%10", color: C.lav },
-          ].map(t => (
-            <View key={t.label} style={{ flexDirection: "row", alignItems: "center", gap: 6, width: "48%" }}>
-              <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.color }} />
-              <Text style={{ fontSize: 10, color: C.muted }}>{t.label}</Text>
-              <Text style={{ fontSize: 10, fontWeight: "700", color: C.text, marginLeft: "auto" }}>{t.pct}</Text>
-            </View>
-          ))}
-        </View>
+        ) : (
+          <Text style={{ fontSize: 11, color: C.muted, paddingVertical: 12, textAlign: "center" }}>Şu an aktif bir üretim modeli bulunmuyor.</Text>
+        )}
       </Card>
 
       {/* Kalite Dağılımı */}
@@ -260,7 +234,7 @@ export default function UretimEkrani() {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 12, fontWeight: "600", color: C.text }}>Tüm Çalışmaları Tek Yerden Yönet</Text>
-          <Text style={{ fontSize: 10, color: C.muted }}>Mevcut model: Tip-M</Text>
+          <Text style={{ fontSize: 10, color: C.muted }}>Mevcut model(ler): {aktifModeller.length > 0 ? aktifModeller.join(", ") : "Bekleniyor..."}</Text>
         </View>
         <ChevronRight size={16} color={C.mint} />
       </View>
@@ -269,10 +243,10 @@ export default function UretimEkrani() {
 
       {/* Filtreler */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {["Tümü", "Tip-M", "Tip-A", "Tip-B"].map(f => (
-          <TouchableOpacity key={f} onPress={() => setAktifFiltre(f)}
-            style={[s.chip, { backgroundColor: aktifFiltre === f ? C.peach : C.blueLt }]}>
-            <Text style={[s.chipText, { color: aktifFiltre === f ? "white" : C.muted }]}>{f}</Text>
+        {modelFiltreleri.map(f => (
+          <TouchableOpacity key={String(f)} onPress={() => setAktifFiltre(String(f))}
+            style={[s.chip, { backgroundColor: aktifFiltre === String(f) ? C.peach : C.blueLt }]}>
+            <Text style={[s.chipText, { color: aktifFiltre === String(f) ? "white" : C.muted }]}>{f}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>

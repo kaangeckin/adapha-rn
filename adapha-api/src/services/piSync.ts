@@ -41,8 +41,36 @@ export async function baslatPiSync(io: Server) {
         baglanMakineye(bant.id, bant.merkezSunucuIp, bant.merkezPort || 8000, io);
       }
     }
+    
+    // Her 15 dakikada bir geçmişe dönük snapshot kaydet (900.000 ms)
+    setInterval(takeTrendSnapshot, 15 * 60 * 1000);
+    // Test amaçlı sistemi başlatırken 5 saniye sonra ilk snapshot'ı atalım
+    setTimeout(takeTrendSnapshot, 5000);
+
   } catch (err) {
     console.error("📡 Pi Sync başlatılırken hata:", err);
+  }
+}
+
+async function takeTrendSnapshot() {
+  try {
+    const aktifBantlar = await prisma.bant.findMany({ where: { durum: 'acik' } });
+    if (aktifBantlar.length === 0) return;
+
+    for (const b of aktifBantlar) {
+      await prisma.trend.create({
+        data: {
+          bantId: b.id,
+          hiz: b.anlikHiz,
+          miktar: b.toplamUretim,
+          kaliteOrani: b.qualityOrani,
+          oee: b.oee
+        }
+      });
+    }
+    console.log(`📊 [Trend] ${aktifBantlar.length} aktif makine için geçmiş veri (snapshot) kaydedildi.`);
+  } catch(e) {
+    console.error("Trend snapshot alınırken hata:", e);
   }
 }
 
