@@ -106,21 +106,21 @@ export default function UretimEkrani() {
     setRaporBasarili(false);
     try {
       const gecti = gectiPct.toFixed(2);
-      
+
       const calismaSn = canliBantlar.reduce((sum, b) => sum + ((b.calismaSuresi || 0) * 3600), 0);
       const durusSn = canliBantlar.reduce((sum, b) => sum + (b.duruşSuresiSn || 0), 0);
-      
+
       const formatTime = (secs: number) => {
         if (!secs) return "0dk";
         const h = Math.floor(secs / 3600);
         const m = Math.floor((secs % 3600) / 60);
         return h > 0 ? `${h}s ${m}dk` : `${m}dk`;
       };
-      
+
       const totalOee = canliBantlar.reduce((sum, b) => sum + (b.oee || 0), 0);
       const totalAvail = canliBantlar.reduce((sum, b) => sum + (b.availability || 0), 0);
       const totalQual = canliBantlar.reduce((sum, b) => sum + (b.qualityOrani || 0), 0);
-      
+
       const avgOee = canliBantlar.length > 0 ? (totalOee / canliBantlar.length).toFixed(1) : "0.0";
       const avgAvail = canliBantlar.length > 0 ? (totalAvail / canliBantlar.length).toFixed(1) : "0.0";
       const avgQual = canliBantlar.length > 0 ? (totalQual / canliBantlar.length).toFixed(1) : "0.0";
@@ -129,7 +129,7 @@ export default function UretimEkrani() {
       const uyariAdet = Math.floor(aktifToplamUretim * (uyariPct / 100));
 
       const bantRows = canliBantlar.length > 0 ? canliBantlar.map(b => {
-        const fire = b.toplamUretim && b.toplamUretim > 0 ? (((b.toplamUretim - (b.iyiUretim||0)) / b.toplamUretim) * 100).toFixed(1) : "0";
+        const fire = b.toplamUretim && b.toplamUretim > 0 ? (((b.toplamUretim - (b.iyiUretim || 0)) / b.toplamUretim) * 100).toFixed(1) : "0";
         return `
           <tr>
             <td>${b.isim}</td>
@@ -309,7 +309,7 @@ export default function UretimEkrani() {
             <Text style={{ fontSize: 11, color: C.blue }}>Rapor hazırlanıyor...</Text>
           </View>
         )}
-        
+
         {aktifModeller.length > 0 ? (
           <View style={[s.typeGrid, { marginTop: 4 }]}>
             {aktifModeller.map((mod, index) => (
