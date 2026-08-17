@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, ActivityIndicator
+  View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, ActivityIndicator, DeviceEventEmitter
 } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
 import { Download, ChevronRight, Zap, Award, Calendar, CheckCircle } from "lucide-react-native";
@@ -10,6 +10,7 @@ import ModalBottomSheet from "../components/ModalBottomSheet";
 import { partiBuyume, radarVerisiniCek, performansTablosunuCek, isiHaritasiniCek, bantVerisiniCek, socket, Bant, getPiSamples, getPiOee } from "../services/api";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import { useNavigation } from "@react-navigation/native";
 
 const W = Dimensions.get("window").width;
 
@@ -64,6 +65,7 @@ function isiRengi(v: number): string {
 }
 
 export default function AnalizEkrani() {
+  const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(true);
   const [radarData, setRadarData] = useState<any[]>([]);
   const [performansData, setPerformansData] = useState<any[]>([]);
@@ -105,6 +107,12 @@ export default function AnalizEkrani() {
       }
     };
     veriCek();
+    const refreshListener = DeviceEventEmitter.addListener("onGlobalRefresh", () => {
+      if (navigation.isFocused()) {
+        setLoading(true);
+        veriCek();
+      }
+    });
 
     socket.on("bant_guncellendi", (guncelBant: Bant) => {
       setCanliBantlar(prev => {
@@ -121,6 +129,7 @@ export default function AnalizEkrani() {
 
     return () => {
       socket.off("bant_guncellendi");
+      refreshListener.remove();
     };
   }, []);
 

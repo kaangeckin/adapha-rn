@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, ActivityIndicator, Animated, Easing, Image
+  View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, ActivityIndicator, Animated, Easing, Image, DeviceEventEmitter
 } from "react-native";
 import { WebView } from "react-native-webview";
 import { LineChart } from "react-native-gifted-charts";
@@ -177,6 +177,7 @@ export default function HomeScreen() {
   useEffect(() => {
     // 1. İlk yüklemede API'den gerçek veriyi çek
     const verileriCek = async () => {
+      setLoading(true);
       const [ozetVeri, bantVeri] = await Promise.all([
         dashboardOzetiniCek(),
         bantVerisiniCek()
@@ -187,6 +188,11 @@ export default function HomeScreen() {
     };
 
     verileriCek();
+    const refreshListener = DeviceEventEmitter.addListener("onGlobalRefresh", () => {
+      if (navigation.isFocused()) {
+        verileriCek();
+      }
+    });
 
     // 2. WebSocket üzerinden anlık hız güncellemelerini (Simülatör) dinle
     socket.on("bant_hiz_guncelleme", (guncellemeler: { id: string, anlikHiz: number }[]) => {
@@ -229,6 +235,7 @@ export default function HomeScreen() {
     return () => {
       socket.off("bant_hiz_guncelleme");
       socket.off("bant_guncellendi");
+      refreshListener.remove();
     };
   }, []);
 

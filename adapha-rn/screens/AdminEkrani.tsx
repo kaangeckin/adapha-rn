@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, DeviceEventEmitter, ActivityIndicator } from "react-native";
 import { Lock, Server, Save, ChevronLeft, Wifi, WifiOff } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,8 +14,10 @@ export default function AdminEkrani() {
   const [bantlar, setBantlar] = useState<any[]>([]);
   const [ipGirdileri, setIpGirdileri] = useState<{[key: string]: string}>({});
   const [portGirdileri, setPortGirdileri] = useState<{[key: string]: string}>({});
+  const [loading, setLoading] = useState(false);
 
   const fetchBantlar = async () => {
+    setLoading(true);
     try {
       const res = await fetch(`${API_URL}/admin/bantlar`);
       if (!res.ok) throw new Error("Bantlar çekilemedi.");
@@ -36,6 +38,8 @@ export default function AdminEkrani() {
     } catch (e) {
       console.error(e);
       Alert.alert("Hata", "Makineler çekilemedi.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -44,6 +48,17 @@ export default function AdminEkrani() {
       fetchBantlar();
     }
   }, [girisYapildi]);
+
+  useEffect(() => {
+    const refreshListener = DeviceEventEmitter.addListener("onGlobalRefresh", () => {
+      if (navigation.isFocused() && girisYapildi) {
+        fetchBantlar();
+      }
+    });
+    return () => {
+      refreshListener.remove();
+    };
+  }, [girisYapildi, navigation]);
 
   const kaydet = async (id: string) => {
     const yeniIp = ipGirdileri[id];
@@ -112,8 +127,11 @@ export default function AdminEkrani() {
       </View>
       
       <ScrollView contentContainerStyle={s.content}>
-        {bantlar.map(bant => {
-          const acik = normalizeDurum(bant.durum) === "acik";
+        {loading ? (
+          <ActivityIndicator size="large" color={C.peach} style={{ marginTop: 50 }} />
+        ) : (
+          bantlar.map(bant => {
+            const acik = normalizeDurum(bant.durum) === "acik";
           return (
             <View key={bant.id} style={s.card}>
               <View style={s.cardHeader}>
@@ -153,7 +171,8 @@ export default function AdminEkrani() {
               <Text style={s.infoText}>Değişiklik anında devreye girer. Eski ağdan kopulup yeni IP'ye bağlanılır.</Text>
             </View>
           );
-        })}
+        })
+        )}
       </ScrollView>
     </View>
   );

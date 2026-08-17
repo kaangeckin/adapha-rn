@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StatusBar, StyleSheet, Platform, TouchableOpacity } from "react-native";
+import { View, Text, StatusBar, StyleSheet, Platform, TouchableOpacity, DeviceEventEmitter } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -34,9 +34,9 @@ function AppHeader() {
         <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate("Bildirimler")}>
           <Bell size={14} color={C.peach} />
         </TouchableOpacity>
-        <View style={[styles.iconBtn, { backgroundColor: C.blueLt }]}>
+        <TouchableOpacity style={[styles.iconBtn, { backgroundColor: C.blueLt }]} onPress={() => DeviceEventEmitter.emit("onGlobalRefresh")}>
           <RefreshCw size={13} color={C.blue} />
-        </View>
+        </TouchableOpacity>
       </View>
     </View>
   );

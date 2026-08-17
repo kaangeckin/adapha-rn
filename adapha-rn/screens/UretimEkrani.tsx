@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, ActivityIndicator
+  View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, ActivityIndicator, DeviceEventEmitter
 } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
 import { Plus, ChevronRight, Settings2, Download, CheckCircle, X } from "lucide-react-native";
@@ -10,12 +10,14 @@ import ModalBottomSheet from "../components/ModalBottomSheet";
 import { hizProfili, bantVerisiniCek, socket, Bant, getPiEvents, getPiSamples, formatTarih } from "../services/api";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import { useNavigation } from "@react-navigation/native";
 
 const W = Dimensions.get("window").width;
 
 // Pi'den gelecek verilerle doldurulacak, artık sahte liste yok.
 
 export default function UretimEkrani() {
+  const navigation = useNavigation<any>();
   const [aktifFiltre, setAktifFiltre] = useState("Tümü");
   const [detayModal, setDetayModal] = useState(false);
   const [seciliParti, setSeciliParti] = useState<any>(null);
@@ -46,6 +48,12 @@ export default function UretimEkrani() {
       setLoading(false);
     };
     veriCek();
+    const refreshListener = DeviceEventEmitter.addListener("onGlobalRefresh", () => {
+      if (navigation.isFocused()) {
+        setLoading(true);
+        veriCek();
+      }
+    });
 
     socket.on("bant_guncellendi", (guncelBant: Bant) => {
       setCanliBantlar(prev => {
@@ -62,6 +70,7 @@ export default function UretimEkrani() {
 
     return () => {
       socket.off("bant_guncellendi");
+      refreshListener.remove();
     };
   }, []);
 
@@ -138,6 +147,10 @@ export default function UretimEkrani() {
       setRaporYukleniyor(false);
     }
   };
+
+  if (loading) {
+    return <View style={[s.scroll, { justifyContent: "center", alignItems: "center" }]}><ActivityIndicator color={C.peach} /></View>;
+  }
 
   return (
     <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
