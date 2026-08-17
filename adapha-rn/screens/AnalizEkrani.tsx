@@ -138,34 +138,51 @@ export default function AnalizEkrani() {
     setRaporBasarili(false);
     try {
       const gecti = gectiPct.toFixed(2);
+      const aktifIyiUretim = Math.floor(aktifToplamUretim * (gectiPct / 100));
+      const uyariAdet = Math.floor(aktifToplamUretim * (uyariPct / 100));
+      const aktifHatali = Math.floor(aktifToplamUretim * (redPct / 100));
+      const dateStr = new Date().toLocaleString("tr-TR");
       const htmlContent = `
         <html>
           <head>
             <style>
-              body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #333; }
-              h1 { color: #2E5DA8; text-align: center; border-bottom: 2px solid #EBF0FA; padding-bottom: 20px; }
-              .box { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
-              .row { display: flex; justify-content: space-between; border-bottom: 1px solid #dee2e6; padding: 10px 0; }
-              .label { font-weight: bold; color: #555; }
-              .val { color: #000; font-weight: bold; }
-              .footer { text-align: center; font-size: 12px; color: #999; margin-top: 40px; }
+              body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; padding: 40px; color: #24292e; line-height: 1.5; font-size: 14px; }
+              h1 { font-size: 2em; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; margin-bottom: 16px; margin-top: 0; }
+              h2 { font-size: 1.5em; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; margin-top: 24px; margin-bottom: 16px; }
+              hr { height: 0.25em; padding: 0; margin: 24px 0; background-color: #e1e4e8; border: 0; }
+              p { margin-top: 0; margin-bottom: 16px; }
+              table { border-collapse: collapse; width: 100%; margin-top: 0; margin-bottom: 16px; }
+              table th, table td { padding: 6px 13px; border: 1px solid #dfe2e5; }
+              table th { font-weight: 600; text-align: left; }
+              table tr { background-color: #fff; border-top: 1px solid #c6cbd1; }
+              table tr:nth-child(2n) { background-color: #f6f8fa; }
             </style>
           </head>
           <body>
-            <h1>Adapha Analitik Raporu</h1>
-            <div class="box">
-              <div class="row"><span class="label">Tarih</span> <span class="val">${new Date().toLocaleString("tr-TR")}</span></div>
-              <div class="row"><span class="label">Ortalama OEE Puanı</span> <span class="val">%${piOee.toFixed(2)}</span></div>
-              <div class="row"><span class="label">Toplam Üretim</span> <span class="val">${aktifToplamUretim.toLocaleString("tr-TR")}</span></div>
-            </div>
-            <div class="box">
-              <div class="row"><span class="label">Sertifikalı Ürün (%)</span> <span class="val" style="color: #2F9C95;">%${gecti}</span></div>
-              <div class="row"><span class="label">Uyarı Seviyesi (%)</span> <span class="val" style="color: #E5B15D;">%${uyariPct.toFixed(2)}</span></div>
-              <div class="row"><span class="label">Hatalı / Fire (%)</span> <span class="val" style="color: #E76F51;">%${redPct.toFixed(2)}</span></div>
-            </div>
-            <div class="footer">
-              <p>Bu rapor Adapha AI tarafından otomatik olarak oluşturulmuştur.</p>
-            </div>
+            <h1>Analitik Raporu</h1>
+            
+            <p><strong>Oluşturulma:</strong> ${dateStr}</p>
+            
+            <hr />
+            
+            <h2>Genel Özet</h2>
+            
+            <table>
+              <thead>
+                <tr><th>Metrik</th><th>Değer</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Ortalama OEE Puanı</td><td>%${piOee.toFixed(2)}</td></tr>
+                <tr><td>Toplam Üretim</td><td>${aktifToplamUretim.toLocaleString("tr-TR")} adet</td></tr>
+                <tr><td>Sertifikalı Ürün</td><td>%${gecti} (${aktifIyiUretim.toLocaleString("tr-TR")} adet)</td></tr>
+                <tr><td>Uyarı Seviyesi</td><td>%${uyariPct.toFixed(2)} (${uyariAdet.toLocaleString("tr-TR")} adet)</td></tr>
+                <tr><td>Hatalı / Fire</td><td>%${redPct.toFixed(2)} (${aktifHatali.toLocaleString("tr-TR")} adet)</td></tr>
+              </tbody>
+            </table>
+            
+            <hr />
+            
+            <p>Bu rapor C-OBSERVER AI tarafından otomatik olarak oluşturulmuştur.</p>
           </body>
         </html>
       `;

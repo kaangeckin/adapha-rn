@@ -106,34 +106,140 @@ export default function UretimEkrani() {
     setRaporBasarili(false);
     try {
       const gecti = gectiPct.toFixed(2);
+      
+      const calismaSn = canliBantlar.reduce((sum, b) => sum + ((b.calismaSuresi || 0) * 3600), 0);
+      const durusSn = canliBantlar.reduce((sum, b) => sum + (b.duruşSuresiSn || 0), 0);
+      
+      const formatTime = (secs: number) => {
+        if (!secs) return "0dk";
+        const h = Math.floor(secs / 3600);
+        const m = Math.floor((secs % 3600) / 60);
+        return h > 0 ? `${h}s ${m}dk` : `${m}dk`;
+      };
+      
+      const totalOee = canliBantlar.reduce((sum, b) => sum + (b.oee || 0), 0);
+      const totalAvail = canliBantlar.reduce((sum, b) => sum + (b.availability || 0), 0);
+      const totalQual = canliBantlar.reduce((sum, b) => sum + (b.qualityOrani || 0), 0);
+      
+      const avgOee = canliBantlar.length > 0 ? (totalOee / canliBantlar.length).toFixed(1) : "0.0";
+      const avgAvail = canliBantlar.length > 0 ? (totalAvail / canliBantlar.length).toFixed(1) : "0.0";
+      const avgQual = canliBantlar.length > 0 ? (totalQual / canliBantlar.length).toFixed(1) : "0.0";
+      const avgPerf = (Number(avgAvail) > 0 && Number(avgQual) > 0) ? (Number(avgOee) / ((Number(avgAvail) / 100) * (Number(avgQual) / 100))).toFixed(1) : "0.0";
+
+      const uyariAdet = Math.floor(aktifToplamUretim * (uyariPct / 100));
+
+      const bantRows = canliBantlar.length > 0 ? canliBantlar.map(b => {
+        const fire = b.toplamUretim && b.toplamUretim > 0 ? (((b.toplamUretim - (b.iyiUretim||0)) / b.toplamUretim) * 100).toFixed(1) : "0";
+        return `
+          <tr>
+            <td>${b.isim}</td>
+            <td style="color: ${b.durum === 'acik' ? '#2F9C95' : '#E76F51'}">${b.durum === 'acik' ? 'Çalışıyor' : 'Durdu'}</td>
+            <td>${(b.toplamUretim || 0).toLocaleString("tr-TR")}</td>
+            <td>%${fire}</td>
+            <td>${b.anlikHiz || 0} br/dk</td>
+          </tr>
+        `;
+      }).join('') : `<tr><td colspan="5" style="text-align:center;">Aktif hat bulunamadı.</td></tr>`;
+
+      const dateStr = new Date().toLocaleString("tr-TR");
+
       const htmlContent = `
         <html>
           <head>
             <style>
-              body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #333; }
-              h1 { color: #2E5DA8; text-align: center; border-bottom: 2px solid #EBF0FA; padding-bottom: 20px; }
-              .box { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
-              .row { display: flex; justify-content: space-between; border-bottom: 1px solid #dee2e6; padding: 10px 0; }
-              .label { font-weight: bold; color: #555; }
-              .val { color: #000; font-weight: bold; }
-              .footer { text-align: center; font-size: 12px; color: #999; margin-top: 40px; }
+              body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; padding: 40px; color: #24292e; line-height: 1.5; font-size: 14px; }
+              h1 { font-size: 2em; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; margin-bottom: 16px; margin-top: 0; }
+              h2 { font-size: 1.5em; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; margin-top: 24px; margin-bottom: 16px; }
+              hr { height: 0.25em; padding: 0; margin: 24px 0; background-color: #e1e4e8; border: 0; }
+              p { margin-top: 0; margin-bottom: 16px; }
+              table { border-collapse: collapse; width: 100%; margin-top: 0; margin-bottom: 16px; }
+              table th, table td { padding: 6px 13px; border: 1px solid #dfe2e5; }
+              table th { font-weight: 600; text-align: left; }
+              table tr { background-color: #fff; border-top: 1px solid #c6cbd1; }
+              table tr:nth-child(2n) { background-color: #f6f8fa; }
             </style>
           </head>
           <body>
-            <h1>Adapha Üretim Raporu</h1>
-            <div class="box">
-              <div class="row"><span class="label">Tarih</span> <span class="val">${new Date().toLocaleString("tr-TR")}</span></div>
-              <div class="row"><span class="label">Aktif Parti Sayısı</span> <span class="val">${aktifPartiSayisi}</span></div>
-              <div class="row"><span class="label">Toplam Üretim</span> <span class="val">${aktifToplamUretim.toLocaleString("tr-TR")}</span></div>
-            </div>
-            <div class="box">
-              <div class="row"><span class="label">Sertifikalı Ürün (%)</span> <span class="val" style="color: #2F9C95;">%${gecti}</span></div>
-              <div class="row"><span class="label">Uyarı Seviyesi (%)</span> <span class="val" style="color: #E5B15D;">%${uyariPct.toFixed(2)}</span></div>
-              <div class="row"><span class="label">Hatalı / Fire (%)</span> <span class="val" style="color: #E76F51;">%${redPct.toFixed(2)}</span></div>
-            </div>
-            <div class="footer">
-              <p>Bu rapor Adapha AI tarafından otomatik olarak oluşturulmuştur.</p>
-            </div>
+            <h1>Üretim Performans Raporu</h1>
+            
+            <p><strong>Oluşturulma:</strong> ${dateStr}</p>
+            
+            <hr />
+            
+            <h2>Vardiya / Zaman Bilgisi</h2>
+            
+            <table>
+              <thead>
+                <tr><th>Vardiya</th><th>Kapsanan Aralık</th><th>Toplam Çalışma Süresi</th><th>Toplam Duruş Süresi</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Vardiya 2 (08:00–16:00)</td><td>${dateStr.split(' ')[0]} 08:00 – ${dateStr.split(' ')[1]}</td><td>${formatTime(calismaSn)}</td><td>${formatTime(durusSn)}</td></tr>
+              </tbody>
+            </table>
+            
+            <hr />
+            
+            <h2>Genel Özet</h2>
+            
+            <table>
+              <thead>
+                <tr><th>Metrik</th><th>Değer</th><th>Detay</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Toplam Üretim</td><td>${aktifToplamUretim.toLocaleString("tr-TR")} adet</td><td>Aktif Parti Sayısı: ${aktifPartiSayisi}</td></tr>
+                <tr><td>Sertifikalı Ürün</td><td>%${gecti} (${aktifIyiUretim.toLocaleString("tr-TR")} adet)</td><td>Geçen ürün sayısı</td></tr>
+                <tr><td>Uyarı Seviyesi</td><td>%${uyariPct.toFixed(2)} (${uyariAdet.toLocaleString("tr-TR")} adet)</td><td>Uyarı sınırındaki ürün sayısı</td></tr>
+                <tr><td>Hatalı / Fire</td><td>%${redPct.toFixed(2)} (${aktifHatali.toLocaleString("tr-TR")} adet)</td><td>Reddedilen ürün sayısı</td></tr>
+              </tbody>
+            </table>
+            
+            <hr />
+            
+            <h2>OEE Performans Kırılımı</h2>
+            
+            <p><strong>Genel OEE: %${avgOee}</strong></p>
+            
+            <table>
+              <thead>
+                <tr><th>Bileşen</th><th>Oran</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Kullanılabilirlik (Availability)</td><td>%${avgAvail}</td></tr>
+                <tr><td>Performans (Performance)</td><td>%${Math.min(100, Number(avgPerf)).toFixed(1)}</td></tr>
+                <tr><td>Kalite (Quality)</td><td>%${avgQual}</td></tr>
+              </tbody>
+            </table>
+            
+            <hr />
+            
+            <h2>Hat Bazlı Detaylar</h2>
+            
+            <table>
+              <thead>
+                <tr><th>Hat</th><th>Durum</th><th>Üretim (adet)</th><th>Fire Oranı</th><th>Anlık Hız</th></tr>
+              </thead>
+              <tbody>
+                ${bantRows}
+              </tbody>
+            </table>
+            
+            <hr />
+            
+            <h2>Onay</h2>
+            
+            <table>
+              <thead>
+                <tr><th>İşletme Sorumlusu</th><th>Vardiya Amiri</th><th>Kalite Kontrol</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Ad Soyad / İmza / Tarih<br><br><br><br></td>
+                  <td>Ad Soyad / İmza / Tarih<br><br><br><br></td>
+                  <td>Ad Soyad / İmza / Tarih<br><br><br><br></td>
+                </tr>
+              </tbody>
+            </table>
+            
           </body>
         </html>
       `;

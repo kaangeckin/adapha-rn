@@ -55,7 +55,7 @@ app.get("/api/ping", (_req, res) => {
 app.get("/", (_req, res) => {
   res.json({
     status: "ok",
-    uygulama: "Adapha API",
+    uygulama: "C-OBSERVER API",
     versiyon: "1.0.0",
     zaman: new Date().toISOString(),
   });
@@ -63,7 +63,7 @@ app.get("/", (_req, res) => {
 
 // ── Sunucuyu Başlat ─────────────────────────────────────────────────────────
 httpServer.listen(Number(PORT), "0.0.0.0", () => {
-  console.log(`\n🚀 Adapha API çalışıyor: http://0.0.0.0:${PORT}`);
+  console.log(`\n🚀 C-OBSERVER API çalışıyor: http://0.0.0.0:${PORT}`);
   console.log(`📡 WebSocket dinleniyor...`);
   
   // Raspberry Pi Sync servisini başlat
